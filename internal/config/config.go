@@ -24,7 +24,7 @@ type HTTPServer struct {
 	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 }
 
-// MustLoad - инициализируем данные из конфига. Если не смогли, то завершаем приложение с ошибкой.
+// MustLoad - инициализирует данные из конфига. Если не удается, то завершает приложение с ошибкой.
 func MustLoad() *Config {
 	// configPath := os.Getenv("CONFIG_PATH")
 	configPath := "./config/config.yaml"
