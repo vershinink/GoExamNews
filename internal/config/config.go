@@ -11,7 +11,7 @@ import (
 // Структура конфига
 type Config struct {
 	RSSFeeds      []string      `yaml:"rss"`
-	RequestReriod time.Duration `yaml:"request_period"`
+	RequestPeriod time.Duration `yaml:"request_period"`
 	StoragePath   string        `yaml:"storage_path"`
 	StorageUser   string        `yaml:"storage_user"`
 	StoragePasswd string        `yaml:"storage_passwd"`
