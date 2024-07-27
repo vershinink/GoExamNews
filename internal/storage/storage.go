@@ -1,23 +1,27 @@
+// Пакет содержит основную структуру Post для работы с постом из RSS лент и интерфейс
+// для работы с любой реализацией базы данных, удовлетворяющей этому интерфейсу.
 package storage
 
 import (
+	"context"
 	"errors"
 	"time"
 )
 
 // Ошибки при работе с БД
 var (
-	ErrPostExists = errors.New("post already exists")
-	ErrEmptyDB    = errors.New("database is empty")
+	ErrEmptyDB = errors.New("database is empty")
 )
 
 type Post struct {
-	ID      string
-	Title   string
-	Content string
-	PubTime time.Time
-	Link    string
+	ID      string    `json:"id" bson:"_id"`
+	Title   string    `json:"title" bson:"title"`
+	Content string    `json:"content" bson:"content"`
+	PubTime time.Time `json:"pubTime" bson:"pubTime"`
+	Link    string    `json:"link" bson:"link"`
 }
 
 type Interface interface {
+	AddPosts(ctx context.Context, posts <-chan Post) int
+	Close() error
 }
