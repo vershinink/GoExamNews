@@ -5,11 +5,22 @@ import (
 	"GoNews/internal/logger"
 	"GoNews/internal/rss"
 	"GoNews/internal/storage"
-	"fmt"
+	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/go-playground/validator/v10"
+	strip "github.com/grokify/html-strip-tags-go"
+)
+
+var (
+	ErrNoRssLinks = errors.New("config file RSS section is empty")
 )
 
 // Parser - структура парсера RSS лент.
@@ -33,15 +44,31 @@ func New(cfg *config.Config, log *slog.Logger, st storage.Interface) *Parser {
 	return parser
 }
 
-// Start запускает парсинг каждого url в отдельной горутине с шагом, указанным в файле конфига.
-func (p *Parser) Start() {
-	for _, url := range p.links {
-		go p.parseRSS(url)
+// Start проверяет каждый url из p.links на валидность, затем запускает парсинг
+// в отдельной горутине с шагом, указанным в файле конфига.
+func (p *Parser) Start() error {
+	if len(p.links) == 0 {
+		return ErrNoRssLinks
 	}
 
-	p.log.Info("Parser started")
+	// Счетчик запущенных парсеров.
+	var i int
+	valid := validator.New()
+	for _, url := range p.links {
+		err := valid.Var(url, "url")
+		if err != nil {
+			p.log.Error("invalid url", slog.String("url", url))
+			continue
+		}
+		go p.parseRSS(url)
+		i++
+	}
+
+	p.log.Debug("parser started on N urls", slog.Int("N", i))
+	return nil
 }
 
+// parseRSS запускает парсинг RSS ленты с переданного url и записывает результаты в БД.
 func (p *Parser) parseRSS(url string) {
 
 	// TODO: добавить контексты.
@@ -81,9 +108,62 @@ func (p *Parser) parseRSS(url string) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		str := fmt.Sprintf("Parsed %d posts from %s\n", len(feed.Channel.Items), url)
-		p.log.Info(str)
+		p.log.Debug("data parsed successfully", slog.String("url", url))
 
+		// Создаем канал posts с емкостью, равной количеству постов из спарсенной ленты.
+		// Асинхронно подготавливаем каждый пост и отправляем в канал. Из этого канала будем
+		// считывать данные и записывать в БД.
+		posts := make(chan storage.Post, len(feed.Channel.Items))
+		var wg sync.WaitGroup
+		wg.Add(len(feed.Channel.Items))
+		for _, v := range feed.Channel.Items {
+			go func(i rss.Item) {
+				defer wg.Done()
+				var p storage.Post
+				p.Title = i.Title
+				p.Content = strip.StripTags(i.Description)
+				p.Link = i.Link
+				p.PubTime = timeConv(i.PubDate)
+				posts <- p
+			}(v)
+		}
+
+		// После обработки всех постов закрываем канал.
+		go func() {
+			wg.Wait()
+			close(posts)
+		}()
+
+		p.log.Debug("sending data to DB", slog.String("url", url))
+
+		// Вызываем метод для записи данных из канала в БД.
+		num := p.storage.AddPosts(context.TODO(), posts)
+
+		p.log.Info("Posts from url added successfully", slog.Int("num", num), slog.String("url", url))
+
+		// Приостанавливаем цикл на время из конфига. Затем начинаем заново.
 		time.Sleep(p.period)
 	}
+}
+
+// timeConv конвертирует переданную дату в time.Time в зависимости от формата.
+// Если формат переданной даты не соответствует проверяемым, то возвращает текущее время и дату.
+func timeConv(str string) time.Time {
+	r, _ := utf8.DecodeLastRuneInString(str)
+	if r == utf8.RuneError {
+		return time.Now()
+	}
+
+	var t time.Time
+	var err error
+	switch {
+	case unicode.IsDigit(r):
+		t, err = time.Parse(time.RFC1123Z, str)
+	default:
+		t, err = time.Parse(time.RFC1123, str)
+	}
+	if err != nil {
+		return time.Now()
+	}
+	return t
 }
