@@ -17,7 +17,7 @@ import (
 // Название базы и коллекции в БД.
 const (
 	dbName  string = "goNews"
-	colName string = "posts"
+	colName string = "testPosts"
 )
 
 // Storage - пул подключений к БД.
@@ -79,15 +79,17 @@ func (s *Storage) Close() error {
 }
 
 // AddPosts читает посты из переданного канала и записывает их в БД.
-// Возвращает количество успешно записанных постов.
-func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) int {
+// Возвращает количество успешно записанных постов и ошибку, отличную от duplicate key error.
+func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int, error) {
+	const operation = "storage.mongodb.Posts"
+
 	var input []interface{}
 	for p := range posts {
 		bsn := bson.D{
 			{Key: "_id", Value: primitive.NewObjectID()},
 			{Key: "title", Value: p.Title},
 			{Key: "content", Value: p.Content},
-			{Key: "pubTime", Value: p.PubTime},
+			{Key: "pubTime", Value: primitive.NewDateTimeFromTime(p.PubTime)},
 			{Key: "link", Value: p.Link},
 		}
 		input = append(input, bsn)
@@ -95,7 +97,36 @@ func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) int {
 
 	collection := s.db.Database(dbName).Collection(colName)
 	opts := options.InsertMany().SetOrdered(false)
-	res, _ := collection.InsertMany(ctx, input, opts)
+	res, err := collection.InsertMany(ctx, input, opts)
+	if err != nil && !mongo.IsDuplicateKeyError(err) {
+		return -1, fmt.Errorf("%s: %w", operation, err)
+	}
 
-	return len(res.InsertedIDs)
+	return len(res.InsertedIDs), nil
+}
+
+// Posts возвращает последние N постов по дате публикации из БД.
+func (s *Storage) Posts(ctx context.Context, n int) ([]storage.Post, error) {
+	const operation = "storage.mongodb.Posts"
+
+	opts := options.Find().SetSort(bson.D{{Key: "pubTime", Value: -1}}).SetLimit(int64(n))
+	filter := bson.D{}
+
+	collection := s.db.Database(dbName).Collection(colName)
+	res, err := collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", operation, err)
+	}
+
+	var posts []storage.Post
+	err = res.All(ctx, &posts)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", operation, err)
+	}
+
+	if len(posts) == 0 {
+		return nil, fmt.Errorf("%s: %w", operation, storage.ErrEmptyDB)
+	}
+
+	return posts, nil
 }

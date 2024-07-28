@@ -22,6 +22,7 @@ type Post struct {
 }
 
 type Interface interface {
-	AddPosts(ctx context.Context, posts <-chan Post) int
+	AddPosts(ctx context.Context, posts <-chan Post) (int, error)
+	Posts(ctx context.Context, n int) ([]Post, error)
 	Close() error
 }

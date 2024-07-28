@@ -5,6 +5,7 @@ package memdb
 import (
 	"GoNews/internal/storage"
 	"context"
+	"reflect"
 	"testing"
 )
 
@@ -14,6 +15,7 @@ var posts = []storage.Post{
 }
 
 func TestStorage_AddPosts(t *testing.T) {
+
 	ch := make(chan storage.Post, len(posts))
 	for _, p := range posts {
 		ch <- p
@@ -33,7 +35,7 @@ func TestStorage_AddPosts(t *testing.T) {
 		want int
 	}{
 		{
-			name: "Success",
+			name: "OK",
 			s:    st,
 			args: args{ctx: context.Background(), posts: ch},
 			want: 2,
@@ -41,8 +43,49 @@ func TestStorage_AddPosts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.s.AddPosts(tt.args.ctx, tt.args.posts); got != tt.want {
+			if got, _ := tt.s.AddPosts(tt.args.ctx, tt.args.posts); got != tt.want {
 				t.Errorf("Storage.AddPosts() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStorage_Posts(t *testing.T) {
+	var arr = []storage.Post{
+		{
+			ID:      "1",
+			Title:   "Post 1",
+			Content: "Content 1",
+		},
+		{
+			ID:      "2",
+			Title:   "Post 2",
+			Content: "Content 2",
+		},
+	}
+	st := New()
+
+	type args struct {
+		ctx context.Context
+		n   int
+	}
+	tests := []struct {
+		name string
+		s    *Storage
+		args args
+		want []storage.Post
+	}{
+		{
+			name: "OK",
+			s:    st,
+			args: args{ctx: context.Background(), n: 2},
+			want: arr,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, _ := tt.s.Posts(tt.args.ctx, tt.args.n); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Storage.Posts() = %v, want %v", got, tt.want)
 			}
 		})
 	}
