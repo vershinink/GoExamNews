@@ -19,7 +19,6 @@ func Index(log *slog.Logger, st storage.Interface) http.HandlerFunc {
 		fs := http.StripPrefix("/", http.FileServer(webapp.Serve()))
 		w.Header().Set("Content-Type", "text/html")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusOK)
 		fs.ServeHTTP(w, r)
 	}
 }

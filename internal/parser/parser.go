@@ -31,6 +31,7 @@ type Parser struct {
 	client  *http.Client
 	log     *slog.Logger
 	storage storage.Interface
+	done    chan bool
 }
 
 // New - конструктор парсера RSS.
@@ -41,6 +42,7 @@ func New(cfg *config.Config, log *slog.Logger, st storage.Interface) *Parser {
 		client:  &http.Client{},
 		log:     log,
 		storage: st,
+		done:    make(chan bool),
 	}
 	return parser
 }
@@ -73,10 +75,15 @@ func (p *Parser) Start() {
 // parseRSS запускает парсинг RSS ленты с переданного url и записывает результаты в БД.
 func (p *Parser) parseRSS(url string) {
 
-	// TODO: добавить контексты.
+	// Создаем контекст с отменой и запускаем ожидание этой отмены в отдельной горутине.
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-p.done
+		cancel()
+	}()
 
 	// Создаем структуру запроса для переданного url.
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		p.log.Error("cannot create new request", slog.String("url", url), logger.Err(err))
 		return
@@ -123,6 +130,7 @@ func (p *Parser) parseRSS(url string) {
 				defer wg.Done()
 				var p storage.Post
 				p.Title = i.Title
+				// TODO: убрать пустые строки в поле Content.
 				p.Content = strip.StripTags(i.Description)
 				p.Link = i.Link
 				p.PubTime = timeConv(i.PubDate)
@@ -139,7 +147,7 @@ func (p *Parser) parseRSS(url string) {
 		p.log.Debug("sending data to DB", slog.String("url", url))
 
 		// Вызываем метод для записи данных из канала в БД.
-		num, err := p.storage.AddPosts(context.TODO(), posts)
+		num, err := p.storage.AddPosts(ctx, posts)
 		if err != nil {
 			p.log.Error("error on adding posts", slog.String("url", url), logger.Err(err))
 			time.Sleep(p.period)
@@ -151,6 +159,14 @@ func (p *Parser) parseRSS(url string) {
 		// Приостанавливаем цикл на время из конфига. Затем начинаем заново.
 		time.Sleep(p.period)
 	}
+}
+
+// Shutdown посылает сигналы для остановки парсинга каждой url.
+func (p *Parser) Shutdown() {
+	for i := 0; i < len(p.links); i++ {
+		p.done <- true
+	}
+	close(p.done)
 }
 
 // timeConv конвертирует переданную дату в time.Time в зависимости от формата.
