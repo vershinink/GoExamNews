@@ -17,7 +17,7 @@ import (
 // Название базы и коллекции в БД.
 const (
 	dbName  string = "goNews"
-	colName string = "testPosts"
+	colName string = "posts"
 )
 
 // Storage - пул подключений к БД.
