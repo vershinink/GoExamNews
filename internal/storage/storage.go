@@ -10,7 +10,8 @@ import (
 
 // Ошибки при работе с БД
 var (
-	ErrEmptyDB = errors.New("database is empty")
+	ErrEmptyDB     = errors.New("database is empty")
+	ErrZeroRequest = errors.New("requested 0 posts")
 )
 
 type Post struct {

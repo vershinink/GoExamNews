@@ -109,6 +109,10 @@ func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int,
 func (s *Storage) Posts(ctx context.Context, n int) ([]storage.Post, error) {
 	const operation = "storage.mongodb.Posts"
 
+	if n == 0 {
+		return nil, fmt.Errorf("%s: %w", operation, storage.ErrZeroRequest)
+	}
+
 	opts := options.Find().SetSort(bson.D{{Key: "pubTime", Value: -1}}).SetLimit(int64(n))
 	filter := bson.D{}
 

@@ -154,7 +154,12 @@ func (p *Parser) parseRSS(url string) {
 			continue
 		}
 
-		p.log.Info("Posts from url added successfully", slog.Int("posts", num), slog.String("url", url))
+		switch num {
+		case 0:
+			p.log.Info("No posts was added", slog.String("url", url))
+		default:
+			p.log.Info("Posts from url added successfully", slog.Int("posts", num), slog.String("url", url))
+		}
 
 		// Приостанавливаем цикл на время из конфига. Затем начинаем заново.
 		time.Sleep(p.period)

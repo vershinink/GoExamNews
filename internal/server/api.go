@@ -10,11 +10,18 @@ import (
 	"strconv"
 )
 
+// Response - структура ответа, которую ожидает клиентское приложение.
+type Response struct {
+	ID      int    `json:"ID"`
+	Title   string `json:"Title"`
+	Content string `json:"Content"`
+	PubTime int64  `json:"PubTime"`
+	Link    string `json:"Link"`
+}
+
 // Index возвращает клиентское приложение.
 func Index(log *slog.Logger, st storage.Interface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		log.Info("new request the index page")
 
 		fs := http.StripPrefix("/", http.FileServer(webapp.Serve()))
 		w.Header().Set("Content-Type", "text/html")
@@ -45,9 +52,20 @@ func Posts(log *slog.Logger, st storage.Interface) http.HandlerFunc {
 			return
 		}
 
+		resp := make([]Response, 0, len(posts))
+		for k, p := range posts {
+			var re Response
+			re.ID = k
+			re.Title = p.Title
+			re.Content = p.Content
+			re.PubTime = p.PubTime.Unix()
+			re.Link = p.Link
+			resp = append(resp, re)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(posts)
+		json.NewEncoder(w).Encode(resp)
 	}
 }
