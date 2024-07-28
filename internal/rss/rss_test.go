@@ -1,3 +1,4 @@
+// Пакет для декодирования RSS потока.
 package rss
 
 import (
@@ -88,10 +89,6 @@ var (
 )
 
 func TestParse(t *testing.T) {
-	readerOK := strings.NewReader(testDataOK)
-	readerNoItem := strings.NewReader(testDataNoItem)
-	readerIncorrect := strings.NewReader(testDataIncorrect)
-	readerEmpty := strings.NewReader("")
 	var readerNil io.Reader
 	var errDataIncorrect *xml.SyntaxError
 
@@ -107,28 +104,28 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			name:    "Data_OK",
-			args:    args{body: readerOK},
+			args:    args{body: strings.NewReader(testDataOK)},
 			want:    true,
 			wantErr: false,
 			gotErr:  nil,
 		},
 		{
 			name:    "Data_No_Item",
-			args:    args{body: readerNoItem},
+			args:    args{body: strings.NewReader(testDataNoItem)},
 			want:    false,
 			wantErr: true,
 			gotErr:  ErrEmptyFeed,
 		},
 		{
 			name:    "Data_Incorrect",
-			args:    args{body: readerIncorrect},
+			args:    args{body: strings.NewReader(testDataIncorrect)},
 			want:    false,
 			wantErr: true,
 			gotErr:  errDataIncorrect,
 		},
 		{
 			name:    "Data_Empty_Body",
-			args:    args{body: readerEmpty},
+			args:    args{body: strings.NewReader("")},
 			want:    false,
 			wantErr: true,
 			gotErr:  io.EOF,

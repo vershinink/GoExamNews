@@ -1,3 +1,4 @@
+// Пакет для парсинга RSS потока.
 package rss
 
 import (
