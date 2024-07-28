@@ -1,3 +1,4 @@
+// Пакет парсера RSS лент.
 package parser
 
 import (
@@ -18,28 +19,6 @@ var parser = &Parser{
 	client:  &http.Client{},
 	log:     slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	storage: st,
-}
-
-func TestParser_Start(t *testing.T) {
-	tests := []struct {
-		name    string
-		p       *Parser
-		wantErr bool
-	}{
-		{
-			name:    "URL_OK",
-			p:       parser,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.p.Start(); (err != nil) != tt.wantErr {
-				t.Errorf("Parser.Start() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			time.Sleep(time.Second * 5)
-		})
-	}
 }
 
 func TestParser_parseRSS(t *testing.T) {

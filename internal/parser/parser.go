@@ -1,3 +1,4 @@
+// Пакет парсера RSS лент.
 package parser
 
 import (
@@ -46,9 +47,11 @@ func New(cfg *config.Config, log *slog.Logger, st storage.Interface) *Parser {
 
 // Start проверяет каждый url из p.links на валидность, затем запускает парсинг
 // в отдельной горутине с шагом, указанным в файле конфига.
-func (p *Parser) Start() error {
+func (p *Parser) Start() {
 	if len(p.links) == 0 {
-		return ErrNoRssLinks
+		p.log.Error("there are no correct rss links in the config file")
+		p.log.Error("parser cannot start")
+		return
 	}
 
 	// Счетчик запущенных парсеров.
@@ -65,7 +68,6 @@ func (p *Parser) Start() error {
 	}
 
 	p.log.Debug("parser started on N urls", slog.Int("N", i))
-	return nil
 }
 
 // parseRSS запускает парсинг RSS ленты с переданного url и записывает результаты в БД.
@@ -108,7 +110,7 @@ func (p *Parser) parseRSS(url string) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		p.log.Debug("data parsed successfully", slog.String("url", url))
+		p.log.Debug("data parsed successfully", slog.Int("posts", len(feed.Channel.Items)), slog.String("url", url))
 
 		// Создаем канал posts с емкостью, равной количеству постов из спарсенной ленты.
 		// Асинхронно подготавливаем каждый пост и отправляем в канал. Из этого канала будем
@@ -137,9 +139,14 @@ func (p *Parser) parseRSS(url string) {
 		p.log.Debug("sending data to DB", slog.String("url", url))
 
 		// Вызываем метод для записи данных из канала в БД.
-		num := p.storage.AddPosts(context.TODO(), posts)
+		num, err := p.storage.AddPosts(context.TODO(), posts)
+		if err != nil {
+			p.log.Error("error on adding posts", slog.String("url", url), logger.Err(err))
+			time.Sleep(p.period)
+			continue
+		}
 
-		p.log.Info("Posts from url added successfully", slog.Int("num", num), slog.String("url", url))
+		p.log.Info("Posts from url added successfully", slog.Int("posts", num), slog.String("url", url))
 
 		// Приостанавливаем цикл на время из конфига. Затем начинаем заново.
 		time.Sleep(p.period)

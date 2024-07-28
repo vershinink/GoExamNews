@@ -4,8 +4,8 @@ import (
 	"GoNews/internal/config"
 	"GoNews/internal/logger"
 	"GoNews/internal/parser"
+	"GoNews/internal/server"
 	"GoNews/internal/storage/mongodb"
-	"os"
 )
 
 func main() {
@@ -21,14 +21,13 @@ func main() {
 	parser := parser.New(cfg, log, st)
 	log.Debug("parser initialized")
 
-	err := parser.Start()
-	if err != nil {
-		log.Error("there are no correct rss links in the config file")
-		log.Info("Parser cannot start")
-		os.Exit(1)
-	}
+	parser.Start()
 
-	log.Info("Parser started successfully")
+	srv := server.New(cfg)
+	srv.API(log, st)
+	srv.Start()
+	log.Info("Server started")
 
 	select {}
+
 }
