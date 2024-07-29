@@ -1,3 +1,4 @@
+// Пакет для работы с файлом конфига.
 package config
 
 import (
@@ -26,11 +27,10 @@ type HTTPServer struct {
 
 // MustLoad - инициализирует данные из конфига. Если не удается, то завершает приложение с ошибкой.
 func MustLoad() *Config {
-	// configPath := os.Getenv("CONFIG_PATH")
-	configPath := "./config/config.yaml"
-
+	// Берем путь к файлу конфига из переменной окружения.
+	configPath := os.Getenv("CONFIG_PATH_SF")
 	if configPath == "" {
-		log.Fatal("CONFIG_PATH is not set")
+		log.Fatal("CONFIG_PATH_SF is not set")
 	}
 
 	// Проверяем, существует ли файл.

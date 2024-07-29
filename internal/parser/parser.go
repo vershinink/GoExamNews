@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 	"unicode"
@@ -82,6 +83,12 @@ func (p *Parser) parseRSS(url string) {
 		cancel()
 	}()
 
+	// Создаем регулярное выражение для вырезания пустых строк из поля description.
+	regex, err := regexp.Compile(`[\n]{2,}[\s]+`)
+	if err != nil {
+		p.log.Error("cannot compile regexp", logger.Err(err))
+	}
+
 	// Создаем структуру запроса для переданного url.
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -130,8 +137,8 @@ func (p *Parser) parseRSS(url string) {
 				defer wg.Done()
 				var p storage.Post
 				p.Title = i.Title
-				// TODO: убрать пустые строки в поле Content.
-				p.Content = strip.StripTags(i.Description)
+				desc := strip.StripTags(i.Description)
+				p.Content = regex.ReplaceAllString(desc, "\n")
 				p.Link = i.Link
 				p.PubTime = timeConv(i.PubDate)
 				posts <- p

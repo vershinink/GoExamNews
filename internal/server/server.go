@@ -1,4 +1,3 @@
-// Пакет для работы с сервером API.
 package server
 
 import (
@@ -48,7 +47,7 @@ func (s *Server) Start() {
 
 // API инициализирует все обработчики API.
 func (s *Server) API(log *slog.Logger, st storage.Interface) {
-	s.mux.HandleFunc("GET /", Index(log, st))
+	s.mux.HandleFunc("GET /", Index())
 	s.mux.HandleFunc("GET /news/{n}", Posts(log, st))
 }
 

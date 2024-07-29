@@ -1,3 +1,4 @@
+// Пакет для работы с сервером и обработчиками API.
 package server
 
 import (
@@ -20,7 +21,7 @@ type Response struct {
 }
 
 // Index возвращает клиентское приложение.
-func Index(log *slog.Logger, st storage.Interface) http.HandlerFunc {
+func Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		fs := http.StripPrefix("/", http.FileServer(webapp.Serve()))

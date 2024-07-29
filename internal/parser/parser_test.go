@@ -41,7 +41,6 @@ func TestParser_parseRSS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			st.I = 0
-			// TODO: добавить остановку бесконечного цикла.
 			go tt.p.parseRSS(tt.args.url)
 			time.Sleep(time.Second * 5)
 			if st.I != tt.wantCount {
