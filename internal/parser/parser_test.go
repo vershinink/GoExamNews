@@ -3,9 +3,7 @@ package parser
 
 import (
 	"GoNews/internal/storage/memdb"
-	"log/slog"
 	"net/http"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -17,7 +15,6 @@ var parser = &Parser{
 	links:   []string{"https://habr.com/ru/rss/hub/go/all/?fl=ru"},
 	period:  time.Minute * 5,
 	client:  &http.Client{},
-	log:     slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	storage: st,
 }
 

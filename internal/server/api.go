@@ -32,15 +32,15 @@ func Index() http.HandlerFunc {
 }
 
 // Posts возвращает слайс последних по дате постов в формате JSON.
-func Posts(log *slog.Logger, st storage.Interface) http.HandlerFunc {
+func Posts(st storage.Interface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const operation = "server.Posts"
 
-		log.Info("new request to receive last posts")
+		slog.Info("new request to receive last posts")
 
 		n, err := strconv.Atoi(r.PathValue("n"))
 		if err != nil {
-			log.Error("incorrect posts number", slog.String("op", operation))
+			slog.Error("incorrect posts number", slog.String("op", operation))
 			http.Error(w, "incorrect posts number", http.StatusBadRequest)
 			return
 		}
@@ -48,7 +48,7 @@ func Posts(log *slog.Logger, st storage.Interface) http.HandlerFunc {
 		ctx := r.Context()
 		posts, err := st.Posts(ctx, n)
 		if err != nil {
-			log.Error("failed to receive posts", logger.Err(err), slog.String("op", operation))
+			slog.Error("failed to receive posts", logger.Err(err), slog.String("op", operation))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

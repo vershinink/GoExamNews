@@ -6,13 +6,14 @@ import (
 	"os"
 )
 
-// MustLoad - инициализирует логгер из пакета slog.
-func MustLoad() *slog.Logger {
+// MustLoad - инициализирует логгер из пакета slog с выводом в формате
+// JSON и устанавливает его логгером по умолчанию, чтобы не передавать
+// этот кастомный логгер другим объектам.
+func MustLoad() {
 	log := slog.New(
 		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
 	)
-
-	return log
+	slog.SetDefault(log)
 }
 
 // Err - обертка для ошибки, представляет ее как атрибут слоггера.

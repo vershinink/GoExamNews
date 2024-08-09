@@ -25,20 +25,19 @@ type HTTPServer struct {
 	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 }
 
-// MustLoad - инициализирует данные из конфига. Если не удается, то завершает приложение с ошибкой.
+// MustLoad - инициализирует данные из конфиг файла. Путь к файлу берет из
+// переменной окружения CONFIG_PATH_SF, пароль для доступа к БД - из переменной
+// окружения DB_PASSWD. Если не удается, то завершает приложение с ошибкой.
 func MustLoad() *Config {
-	// Берем путь к файлу конфига из переменной окружения.
 	configPath := os.Getenv("CONFIG_PATH_SF")
 	if configPath == "" {
 		log.Fatal("CONFIG_PATH_SF is not set")
 	}
 
-	// Проверяем, существует ли файл.
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("config file does not exist: %s", configPath)
 	}
 
-	// Читаем файл конфига и декодируем в структуру.
 	file, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Fatalf("cannot read config file: %s, %s", configPath, err)
@@ -50,7 +49,6 @@ func MustLoad() *Config {
 		log.Fatalf("cannot decode config file: %s, %s", configPath, err)
 	}
 
-	// Читаем пароль к БД из переменных окружения.
 	cfg.StoragePasswd = os.Getenv("DB_PASSWD")
 
 	return &cfg

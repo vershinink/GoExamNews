@@ -7,30 +7,31 @@ import (
 	"GoNews/internal/server"
 	"GoNews/internal/stopsignal"
 	"GoNews/internal/storage/mongodb"
+	"log/slog"
 )
 
 func main() {
 
 	// Инициализируем конфиг файл и логгер.
 	cfg := config.MustLoad()
-	log := logger.MustLoad()
-	log.Debug("config file and logger initialized")
+	logger.MustLoad()
+	slog.Debug("config file and logger initialized")
 
 	// Инициализируем базу данных.
 	st := mongodb.New(cfg)
-	log.Debug("storage initialized")
+	slog.Debug("storage initialized")
 	defer st.Close()
 
 	// Инициализируем и запускаем парсер RSS.
-	parser := parser.New(cfg, log, st)
-	log.Debug("parser initialized")
+	parser := parser.New(cfg, st)
+	slog.Debug("parser initialized")
 	parser.Start()
 
 	// Инициализируем сервер, объявляем обработчики API и запускаем сервер.
 	srv := server.New(cfg)
-	srv.API(log, st)
+	srv.API(st)
 	srv.Start()
-	log.Info("Server started")
+	slog.Info("Server started")
 
 	// Блокируем выполнение основной горутины и ожидаем сигнала прерывания.
 	stopsignal.Stop()
@@ -39,5 +40,5 @@ func main() {
 	go parser.Shutdown()
 	srv.Shutdown()
 
-	log.Info("Server stopped")
+	slog.Info("Server stopped")
 }

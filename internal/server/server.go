@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"log/slog"
 	"net/http"
 	"time"
 )
@@ -46,9 +45,9 @@ func (s *Server) Start() {
 }
 
 // API инициализирует все обработчики API.
-func (s *Server) API(log *slog.Logger, st storage.Interface) {
+func (s *Server) API(st storage.Interface) {
 	s.mux.HandleFunc("GET /", Index())
-	s.mux.HandleFunc("GET /news/{n}", Posts(log, st))
+	s.mux.HandleFunc("GET /news/{n}", Posts(st))
 }
 
 // Shutdown останавливает сервер используя graceful shutdown.

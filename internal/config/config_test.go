@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// TestMustLoad позволяет проверить корректность указания пути
+// к файлу конфига в переменных окружения.
 func TestMustLoad(t *testing.T) {
 	var got *Config = MustLoad()
 	if got == nil {

@@ -2,7 +2,6 @@ package server
 
 import (
 	"GoNews/internal/config"
-	"GoNews/internal/logger"
 	"GoNews/internal/storage"
 	"GoNews/internal/storage/memdb"
 	"context"
@@ -27,14 +26,13 @@ var posts = []storage.Post{
 	{Title: "First post"},
 	{Title: "Second post"},
 }
-var logg = logger.MustLoad()
 var st = memdb.New()
 
 func TestIndex(t *testing.T) {
 	srv := New(&cfg)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
-	srv.API(logg, st)
+	srv.API(st)
 
 	srv.mux.ServeHTTP(rr, req)
 
@@ -63,7 +61,7 @@ func TestPosts(t *testing.T) {
 	srv := New(&cfg)
 	req := httptest.NewRequest(http.MethodGet, str, nil)
 	rr := httptest.NewRecorder()
-	srv.API(logg, st)
+	srv.API(st)
 
 	srv.mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {

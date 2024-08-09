@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-var ErrTest = errors.New("test")
+var errTest = errors.New("test")
 
 func TestErr(t *testing.T) {
-	got := Err(ErrTest)
+	got := Err(errTest)
 	if got.String() != "error=test" {
 		t.Errorf("Err.String() = %v, want %s", got.String(), "error=test")
 	}

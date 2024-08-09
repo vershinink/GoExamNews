@@ -30,18 +30,16 @@ type Parser struct {
 	links   []string
 	period  time.Duration
 	client  *http.Client
-	log     *slog.Logger
 	storage storage.Interface
 	done    chan bool
 }
 
 // New - конструктор парсера RSS.
-func New(cfg *config.Config, log *slog.Logger, st storage.Interface) *Parser {
+func New(cfg *config.Config, st storage.Interface) *Parser {
 	parser := &Parser{
 		links:   cfg.RSSFeeds,
 		period:  cfg.RequestPeriod,
 		client:  &http.Client{},
-		log:     log,
 		storage: st,
 		done:    make(chan bool),
 	}
@@ -52,8 +50,8 @@ func New(cfg *config.Config, log *slog.Logger, st storage.Interface) *Parser {
 // в отдельной горутине с шагом, указанным в файле конфига.
 func (p *Parser) Start() {
 	if len(p.links) == 0 {
-		p.log.Error("there are no correct rss links in the config file")
-		p.log.Error("parser cannot start")
+		slog.Error("there are no correct rss links in the config file")
+		slog.Error("parser cannot start")
 		return
 	}
 
@@ -63,14 +61,14 @@ func (p *Parser) Start() {
 	for _, url := range p.links {
 		err := valid.Var(url, "url")
 		if err != nil {
-			p.log.Error("invalid url", slog.String("url", url))
+			slog.Error("invalid url", slog.String("url", url))
 			continue
 		}
 		go p.parseRSS(url)
 		i++
 	}
 
-	p.log.Debug("parser started on N urls", slog.Int("N", i))
+	slog.Debug("parser started on N urls", slog.Int("N", i))
 }
 
 // parseRSS запускает парсинг RSS ленты с переданного url и записывает результаты в БД.
@@ -86,24 +84,24 @@ func (p *Parser) parseRSS(url string) {
 	// Создаем регулярное выражение для вырезания пустых строк из поля description.
 	regex, err := regexp.Compile(`[\n]{2,}[\s]+`)
 	if err != nil {
-		p.log.Error("cannot compile regexp", logger.Err(err))
+		slog.Error("cannot compile regexp", logger.Err(err))
 	}
 
 	// Создаем структуру запроса для переданного url.
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		p.log.Error("cannot create new request", slog.String("url", url), logger.Err(err))
+		slog.Error("cannot create new request", slog.String("url", url), logger.Err(err))
 		return
 	}
 
 	// Запускаем бесконечный цикл с парсингом RSS ленты и записи постов в БД.
 	for {
-		p.log.Debug("requesting data", slog.String("url", url))
+		slog.Debug("requesting data", slog.String("url", url))
 
 		// Делаем запрос к RSS ленте. Если вернулась ошибка, то приостанавливаем цикл на время из конфига.
 		resp, err := p.client.Do(req)
 		if err != nil {
-			p.log.Error("cannot receive a response", slog.String("url", url), logger.Err(err))
+			slog.Error("cannot receive a response", slog.String("url", url), logger.Err(err))
 			time.Sleep(p.period)
 			continue
 		}
@@ -112,7 +110,7 @@ func (p *Parser) parseRSS(url string) {
 		// Затем приостанавливаем цикл на время из конфига.
 		feed, err := rss.Parse(resp.Body)
 		if err != nil {
-			p.log.Error("cannot parse RSS feed", slog.String("url", url), logger.Err(err))
+			slog.Error("cannot parse RSS feed", slog.String("url", url), logger.Err(err))
 
 			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
@@ -124,7 +122,7 @@ func (p *Parser) parseRSS(url string) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		p.log.Debug("data parsed successfully", slog.Int("posts", len(feed.Channel.Items)), slog.String("url", url))
+		slog.Debug("data parsed successfully", slog.Int("posts", len(feed.Channel.Items)), slog.String("url", url))
 
 		// Создаем канал posts с емкостью, равной количеству постов из спарсенной ленты.
 		// Асинхронно подготавливаем каждый пост и отправляем в канал. Из этого канала будем
@@ -151,21 +149,21 @@ func (p *Parser) parseRSS(url string) {
 			close(posts)
 		}()
 
-		p.log.Debug("sending data to DB", slog.String("url", url))
+		slog.Debug("sending data to DB", slog.String("url", url))
 
 		// Вызываем метод для записи данных из канала в БД.
 		num, err := p.storage.AddPosts(ctx, posts)
 		if err != nil {
-			p.log.Error("error on adding posts", slog.String("url", url), logger.Err(err))
+			slog.Error("error on adding posts", slog.String("url", url), logger.Err(err))
 			time.Sleep(p.period)
 			continue
 		}
 
 		switch num {
 		case 0:
-			p.log.Info("No posts was added", slog.String("url", url))
+			slog.Info("No posts was added", slog.String("url", url))
 		default:
-			p.log.Info("Posts from url added successfully", slog.Int("posts", num), slog.String("url", url))
+			slog.Info("Posts from url added successfully", slog.Int("posts", num), slog.String("url", url))
 		}
 
 		// Приостанавливаем цикл на время из конфига. Затем начинаем заново.
