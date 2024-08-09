@@ -38,17 +38,12 @@ func Parse(body io.Reader) (Feed, error) {
 		return feed, fmt.Errorf("%s: %w", operation, ErrBodyNil)
 	}
 
-	// Читаем ридер и десериализуем его в структуру Feed.
-	b, err := io.ReadAll(body)
-	if err != nil {
-		return feed, fmt.Errorf("%s: %w", operation, err)
-	}
-	err = xml.Unmarshal(b, &feed)
+	d := xml.NewDecoder(body)
+	err := d.Decode(&feed)
 	if err != nil {
 		return feed, fmt.Errorf("%s: %w", operation, err)
 	}
 
-	// Проверяем, есть ли данные в структуре.
 	if len(feed.Channel.Items) == 0 {
 		return feed, fmt.Errorf("%s: %w", operation, ErrEmptyFeed)
 	}

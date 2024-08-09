@@ -88,6 +88,8 @@ var (
 	`
 )
 
+// TestParse позволяет проверить корректность десериализации RSS фрагмента,
+// а также все пользовательские ошибки.
 func TestParse(t *testing.T) {
 	var readerNil io.Reader
 	var errDataIncorrect *xml.SyntaxError
