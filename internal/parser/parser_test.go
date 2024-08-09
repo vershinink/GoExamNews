@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"GoNews/internal/rss"
 	"GoNews/internal/storage/memdb"
 	"net/http"
 	"reflect"
@@ -9,16 +10,62 @@ import (
 	"time"
 )
 
-var st = memdb.New()
-
 var parser = &Parser{
-	links:   []string{"https://habr.com/ru/rss/hub/go/all/?fl=ru"},
-	period:  time.Minute * 5,
-	client:  &http.Client{},
-	storage: st,
+	links:  []string{"https://habr.com/ru/rss/hub/go/all/?fl=ru"},
+	period: time.Minute * 5,
+	client: &http.Client{
+		Timeout: reqTime,
+	},
+	storage: memdb.New(),
+}
+
+func TestParser_Start(t *testing.T) {
+	parserNoURL := *parser
+	parserNoURL.links = []string{}
+	parserIncorrect := *parser
+	parserIncorrect.links = []string{"abcdef"}
+
+	tests := []struct {
+		name    string
+		p       *Parser
+		wantErr bool
+	}{
+		{
+			name:    "URL_OK",
+			p:       parser,
+			wantErr: false,
+		},
+		{
+			name:    "No_URLs",
+			p:       &parserNoURL,
+			wantErr: true,
+		},
+		{
+			name:    "Incorrect_URL",
+			p:       &parserIncorrect,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.p.Start(); (err != nil) != tt.wantErr {
+				t.Errorf("Parser.Start() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
 }
 
 func TestParser_parseRSS(t *testing.T) {
+	st := memdb.New()
+	var parser = &Parser{
+		links:  []string{"https://habr.com/ru/rss/hub/go/all/?fl=ru"},
+		period: time.Minute * 5,
+		client: &http.Client{
+			Timeout: reqTime,
+		},
+		storage: st,
+	}
+
 	type args struct {
 		url string
 	}
@@ -37,11 +84,52 @@ func TestParser_parseRSS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			st.I = 0
 			go tt.p.parseRSS(tt.args.url)
 			time.Sleep(time.Second * 5)
-			if st.I != tt.wantCount {
-				t.Errorf("Parser.parseRSS = %v, want %v", st.I, tt.wantCount)
+			if st.Len() != tt.wantCount {
+				t.Errorf("Parser.parseRSS() = %v, want %v", st.Len(), tt.wantCount)
+			}
+		})
+	}
+}
+
+func Test_postConv(t *testing.T) {
+	resp, err := http.Get(parser.links[0])
+	if err != nil {
+		t.Errorf("cannot receive RSS feed from url: %s", parser.links[0])
+	}
+	defer resp.Body.Close()
+	feed, err := rss.Parse(resp.Body)
+	if err != nil {
+		t.Errorf("cannot decode RSS feed")
+	}
+
+	type args struct {
+		feed rss.Feed
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "OK",
+			args: args{
+				feed: feed,
+			},
+			want: 40,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got int
+			posts := postConv(tt.args.feed)
+			for p := range posts {
+				_ = p
+				got++
+			}
+			if got != tt.want {
+				t.Errorf("postConv() = %v, want %v", got, tt.want)
 			}
 		})
 	}

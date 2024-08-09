@@ -11,7 +11,6 @@ import (
 // Storage - эмуляция пула подключений к БД.
 type Storage struct {
 	news []storage.Post
-	I    int // счетчик спарсенных постов
 }
 
 // New - конструктор эмулятора пулов подключений.
@@ -24,11 +23,15 @@ func (s *Storage) Close() error {
 	return nil
 }
 
+// Len - возвращает количество постов в хранилище.
+func (s *Storage) Len() int {
+	return len(s.news)
+}
+
 // AddPost - эмуляция метода добавления постов в БД.
 func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int, error) {
 	for p := range posts {
 		s.news = append(s.news, p)
-		s.I++
 	}
 	return len(s.news), nil
 }

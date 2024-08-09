@@ -8,6 +8,7 @@ import (
 	"GoNews/internal/storage"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -21,8 +22,11 @@ import (
 	strip "github.com/grokify/html-strip-tags-go"
 )
 
+// reqTime - таймаут для запроса RSS ленты.
+const reqTime time.Duration = time.Second * 10
+
 var (
-	ErrNoRssLinks = errors.New("config file RSS section is empty")
+	ErrNoLinks = errors.New("RSS section of the config file has no correct URLs")
 )
 
 // Parser - структура парсера RSS лент.
@@ -37,26 +41,28 @@ type Parser struct {
 // New - конструктор парсера RSS.
 func New(cfg *config.Config, st storage.Interface) *Parser {
 	parser := &Parser{
-		links:   cfg.RSSFeeds,
-		period:  cfg.RequestPeriod,
-		client:  &http.Client{},
+		links:  cfg.RSSFeeds,
+		period: cfg.RequestPeriod,
+		client: &http.Client{
+			Timeout: reqTime,
+		},
 		storage: st,
 		done:    make(chan bool),
 	}
 	return parser
 }
 
-// Start проверяет каждый url из p.links на валидность, затем запускает парсинг
-// в отдельной горутине с шагом, указанным в файле конфига.
-func (p *Parser) Start() {
+// Start проверяет каждый url из списка ссылок p.links на валидность,
+// затем запускает парсинг в отдельной горутине с шагом, указанным
+// в файле конфига.
+func (p *Parser) Start() error {
 	if len(p.links) == 0 {
-		slog.Error("there are no correct rss links in the config file")
-		slog.Error("parser cannot start")
-		return
+		return ErrNoLinks
 	}
 
-	// Счетчик запущенных парсеров.
+	// Счетчик запущенных парсеров, нужен для вывода в Debug сообщении.
 	var i int
+	// Валидатор нужен для проверки url на корректность.
 	valid := validator.New()
 	for _, url := range p.links {
 		err := valid.Var(url, "url")
@@ -68,37 +74,44 @@ func (p *Parser) Start() {
 		i++
 	}
 
-	slog.Debug("parser started on N urls", slog.Int("N", i))
+	if i == 0 {
+		return ErrNoLinks
+	}
+
+	slog.Debug(fmt.Sprintf("parser started on %d urls", i))
+	return nil
 }
 
-// parseRSS запускает парсинг RSS ленты с переданного url и записывает результаты в БД.
-func (p *Parser) parseRSS(url string) {
+// Shutdown посылает сигналы для остановки парсинга url.
+func (p *Parser) Shutdown() {
+	for i := 0; i < len(p.links); i++ {
+		p.done <- true
+	}
+	close(p.done)
+}
 
-	// Создаем контекст с отменой и запускаем ожидание этой отмены в отдельной горутине.
+// parseRSS запускает парсинг RSS ленты с переданного url в бесконечном
+// цикле и с периодом, указанным в парсере. Каждую итерацию цикла
+// запрашивается и десериализуется RSS лента. Затем все новые посты
+// записываются в БД.
+func (p *Parser) parseRSS(url string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		<-p.done
 		cancel()
 	}()
 
-	// Создаем регулярное выражение для вырезания пустых строк из поля description.
-	regex, err := regexp.Compile(`[\n]{2,}[\s]+`)
-	if err != nil {
-		slog.Error("cannot compile regexp", logger.Err(err))
-	}
-
-	// Создаем структуру запроса для переданного url.
+	// Создаем новый запрос с контекстом для переданного url. Контекст
+	// используется для отмены запроса в случае остановки парсера.
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		slog.Error("cannot create new request", slog.String("url", url), logger.Err(err))
 		return
 	}
 
-	// Запускаем бесконечный цикл с парсингом RSS ленты и записи постов в БД.
 	for {
 		slog.Debug("requesting data", slog.String("url", url))
 
-		// Делаем запрос к RSS ленте. Если вернулась ошибка, то приостанавливаем цикл на время из конфига.
 		resp, err := p.client.Do(req)
 		if err != nil {
 			slog.Error("cannot receive a response", slog.String("url", url), logger.Err(err))
@@ -106,52 +119,25 @@ func (p *Parser) parseRSS(url string) {
 			continue
 		}
 
-		// Парсим данные из тела ответа. Если ошибка, то вычитываем все тело ответа и закрываем его.
-		// Затем приостанавливаем цикл на время из конфига.
 		feed, err := rss.Parse(resp.Body)
+
+		// Для корректного переиспользования соединения и освобождения
+		// памяти следует вычитать все тело ответа до EOF и закрыть его,
+		// как указано в описании к методу Do клиента.
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			slog.Error("cannot parse RSS feed", slog.String("url", url), logger.Err(err))
-
-			io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
 			time.Sleep(p.period)
 			continue
 		}
 
-		// Вычитываем все тело ответа и закрываем его, освобождая память.
-		io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
-
 		slog.Debug("data parsed successfully", slog.Int("posts", len(feed.Channel.Items)), slog.String("url", url))
 
-		// Создаем канал posts с емкостью, равной количеству постов из спарсенной ленты.
-		// Асинхронно подготавливаем каждый пост и отправляем в канал. Из этого канала будем
-		// считывать данные и записывать в БД.
-		posts := make(chan storage.Post, len(feed.Channel.Items))
-		var wg sync.WaitGroup
-		wg.Add(len(feed.Channel.Items))
-		for _, v := range feed.Channel.Items {
-			go func(i rss.Item) {
-				defer wg.Done()
-				var p storage.Post
-				p.Title = i.Title
-				desc := strip.StripTags(i.Description)
-				p.Content = regex.ReplaceAllString(desc, "\n")
-				p.Link = i.Link
-				p.PubTime = timeConv(i.PubDate)
-				posts <- p
-			}(v)
-		}
-
-		// После обработки всех постов закрываем канал.
-		go func() {
-			wg.Wait()
-			close(posts)
-		}()
+		posts := postConv(feed)
 
 		slog.Debug("sending data to DB", slog.String("url", url))
 
-		// Вызываем метод для записи данных из канала в БД.
 		num, err := p.storage.AddPosts(ctx, posts)
 		if err != nil {
 			slog.Error("error on adding posts", slog.String("url", url), logger.Err(err))
@@ -166,21 +152,52 @@ func (p *Parser) parseRSS(url string) {
 			slog.Info("Posts from url added successfully", slog.Int("posts", num), slog.String("url", url))
 		}
 
-		// Приостанавливаем цикл на время из конфига. Затем начинаем заново.
 		time.Sleep(p.period)
 	}
 }
 
-// Shutdown посылает сигналы для остановки парсинга каждой url.
-func (p *Parser) Shutdown() {
-	for i := 0; i < len(p.links); i++ {
-		p.done <- true
+// postConv создает и возвращает канал с емкостью, равной количеству
+// постов из переданной RSS ленты. Асинхронно подготавливает каждый
+// пост и отправляет в канал.
+func postConv(feed rss.Feed) <-chan storage.Post {
+	ln := len(feed.Channel.Items)
+	posts := make(chan storage.Post, ln)
+	var wg sync.WaitGroup
+	wg.Add(ln)
+
+	go func() {
+		wg.Wait()
+		close(posts)
+	}()
+
+	// Создаем регулярное выражение для вырезания пустых строк из поля
+	// description. Функция StripTags из пакета strip вырезает HTML тэги,
+	// но оставляет много пустых строк, если такие были.
+	regex, err := regexp.Compile(`[\n]{2,}[\s]+`)
+	if err != nil {
+		slog.Error("cannot compile regexp", logger.Err(err))
 	}
-	close(p.done)
+
+	for _, v := range feed.Channel.Items {
+		go func(i rss.Item) {
+			defer wg.Done()
+
+			var p storage.Post
+			p.Title = i.Title
+			desc := strip.StripTags(i.Description)
+			p.Content = regex.ReplaceAllString(desc, "\n")
+			p.Link = i.Link
+			p.PubTime = timeConv(i.PubDate)
+			posts <- p
+		}(v)
+	}
+
+	return posts
 }
 
 // timeConv конвертирует переданную дату в time.Time в зависимости от формата.
-// Если формат переданной даты не соответствует проверяемым, то возвращает текущее время и дату.
+// Если формат переданной даты не соответствует проверяемым, то возвращает
+// текущее время и дату.
 func timeConv(str string) time.Time {
 	r, _ := utf8.DecodeLastRuneInString(str)
 	if r == utf8.RuneError {
