@@ -8,12 +8,13 @@ import (
 	"time"
 )
 
-// Ошибки при работе с БД
+// Ошибки при работе с БД.
 var (
 	ErrEmptyDB     = errors.New("database is empty")
 	ErrZeroRequest = errors.New("requested 0 posts")
 )
 
+// Post - структура поста из RSS ленты для работы с БД.
 type Post struct {
 	ID      string    `json:"id" bson:"_id"`
 	Title   string    `json:"title" bson:"title"`
@@ -22,6 +23,7 @@ type Post struct {
 	Link    string    `json:"link" bson:"link"`
 }
 
+// Interface - интерфейс хранилища постов из RSS лент.
 type Interface interface {
 	AddPosts(ctx context.Context, posts <-chan Post) (int, error)
 	Posts(ctx context.Context, n int) ([]Post, error)

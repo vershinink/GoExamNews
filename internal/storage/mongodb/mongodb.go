@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,11 +15,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Название базы и коллекции в БД.
-const (
+// Название базы и коллекции в БД. Используются переменные,
+// а не константы, так как в тестах им присваиваются другие
+// значения.
+var (
 	dbName  string = "goNews"
 	colName string = "posts"
 )
+
+const tmConn time.Duration = time.Second * 20
 
 // Storage - пул подключений к БД.
 type Storage struct {
@@ -27,30 +32,36 @@ type Storage struct {
 
 // New - обертка для конструктора пула подключений new.
 func New(cfg *config.Config) *Storage {
-	storage, err := new(cfg.StoragePath, cfg.StorageUser, cfg.StoragePasswd)
+	opts := setOpts(cfg.StoragePath, cfg.StorageUser, cfg.StoragePasswd)
+	storage, err := new(opts)
 	if err != nil {
 		log.Fatalf("failed to init storage: %s", err.Error())
 	}
 	return storage
 }
 
-// new - конструктор пула подключений к БД.
-func new(path, user, password string) (*Storage, error) {
-	const operation = "storage.mongodb.new"
-
+// setOpts настраивает опции нового подключения к БД.
+// Функция вынесена отдельно для подмены ее в пакете
+// с тестами.
+func setOpts(path, user, password string) *options.ClientOptions {
 	credential := options.Credential{
 		AuthMechanism: "SCRAM-SHA-256",
 		AuthSource:    "admin",
 		Username:      user,
 		Password:      password,
 	}
+	opts := options.Client().ApplyURI(path).SetAuth(credential)
+	return opts
+}
 
-	// Задаем опции подключения.
-	// opts := options.Client().ApplyURI(path).SetAuth(credential)
-	opts := options.Client().ApplyURI(path)
-	_ = credential
-	// Создаем подключение к MongoDB и проверяем его.
-	db, err := mongo.Connect(context.Background(), opts)
+// new - конструктор пула подключений к БД.
+func new(opts *options.ClientOptions) (*Storage, error) {
+	const operation = "storage.mongodb.new"
+
+	tm, cancel := context.WithTimeout(context.Background(), tmConn)
+	defer cancel()
+
+	db, err := mongo.Connect(tm, opts)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", operation, err)
 	}
@@ -59,13 +70,14 @@ func new(path, user, password string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", operation, err)
 	}
 
-	// Создаем уникальный индекс по полю title.
+	// Создаем уникальный индекс по полю title, чтобы избежать
+	// записи уже существующих постов.
 	collection := db.Database(dbName).Collection(colName)
 	indexModel := mongo.IndexModel{
 		Keys:    bson.D{{Key: "title", Value: -1}},
 		Options: options.Index().SetUnique(true),
 	}
-	_, err = collection.Indexes().CreateOne(context.Background(), indexModel)
+	_, err = collection.Indexes().CreateOne(tm, indexModel)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", operation, err)
 	}
@@ -78,8 +90,9 @@ func (s *Storage) Close() error {
 	return s.db.Disconnect(context.Background())
 }
 
-// AddPosts читает посты из переданного канала и записывает их в БД.
-// Возвращает количество успешно записанных постов и ошибку, отличную от duplicate key error.
+// AddPosts читает посты из переданного канала и записывает
+// их в БД. Возвращает количество успешно записанных постов
+// и ошибку, отличную от duplicate key error.
 func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int, error) {
 	const operation = "storage.mongodb.Posts"
 
@@ -99,13 +112,14 @@ func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int,
 	opts := options.InsertMany().SetOrdered(false)
 	res, err := collection.InsertMany(ctx, input, opts)
 	if err != nil && !mongo.IsDuplicateKeyError(err) {
-		return -1, fmt.Errorf("%s: %w", operation, err)
+		return len(res.InsertedIDs), fmt.Errorf("%s: %w", operation, err)
 	}
 
 	return len(res.InsertedIDs), nil
 }
 
-// Posts возвращает последние N постов по дате публикации из БД.
+// Posts возвращает указанное число последних постов по дате
+// публикации из БД.
 func (s *Storage) Posts(ctx context.Context, n int) ([]storage.Post, error) {
 	const operation = "storage.mongodb.Posts"
 

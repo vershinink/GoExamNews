@@ -5,29 +5,46 @@ package mongodb
 import (
 	"GoNews/internal/storage"
 	"context"
-	"reflect"
+	"errors"
+	"fmt"
+	"math/rand"
 	"testing"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// Тестирование пакета mongodb требует подключения к базе данных
+// MongoDB без установленной авторизации.
 
 var path string = "mongodb://localhost:27017/"
 var posts = []storage.Post{
 	{
-		Title:   "Test post 1",
-		Content: "Test 111",
+		Title:   fmt.Sprintf("Test post %d", rand.Int()),
+		Content: "Test content",
 		Link:    "https://google.com",
 		PubTime: time.Now(),
 	},
 	{
-		Title:   "Test post 2",
-		Content: "Test 222",
+		Title:   fmt.Sprintf("Test post %d", rand.Int()),
+		Content: "Test content",
 		Link:    "https://google.com",
 		PubTime: time.Now(),
 	},
 }
 
+// setTestOpts возвращает опции нового подключения без авторизации.
+func setTestOpts(path string) *options.ClientOptions {
+	return options.Client().ApplyURI(path)
+}
+
 func Test_new(t *testing.T) {
-	st, err := new(path, "", "")
+
+	// Для тестирования авторизации.
+	// opts := setOpts(path, "admin", os.Getenv("DB_PASSWD"))
+
+	opts := setTestOpts(path)
+	st, err := new(opts)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -36,13 +53,16 @@ func Test_new(t *testing.T) {
 
 func TestStorage_AddPosts(t *testing.T) {
 
+	dbName = "testDB"
+	colName = "testCollection"
+
 	ch := make(chan storage.Post, len(posts))
 	for _, p := range posts {
 		ch <- p
 	}
 	close(ch)
 
-	st, err := new(path, "", "")
+	st, err := new(setTestOpts(path))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -83,7 +103,10 @@ func TestStorage_AddPosts(t *testing.T) {
 
 func TestStorage_Posts(t *testing.T) {
 
-	st, err := new(path, "", "")
+	dbName = "testDB"
+	colName = "testCollection"
+
+	st, err := new(setTestOpts(path))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -97,14 +120,12 @@ func TestStorage_Posts(t *testing.T) {
 		name    string
 		s       *Storage
 		args    args
-		want    string
 		wantErr bool
 	}{
 		{
 			name:    "OK",
 			s:       st,
 			args:    args{ctx: context.Background(), n: 2},
-			want:    "Test post 1",
 			wantErr: false,
 		},
 	}
@@ -112,11 +133,15 @@ func TestStorage_Posts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.s.Posts(tt.args.ctx, tt.args.n)
 			if (err != nil) != tt.wantErr {
+				if errors.Is(err, storage.ErrEmptyDB) {
+					t.Errorf("Storage.Posts() error = %v, need to add posts", err)
+					return
+				}
 				t.Errorf("Storage.Posts() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got[0].Title, tt.want) {
-				t.Errorf("Storage.Posts() = %v, want %v", got, tt.want)
+			if len(got) != tt.args.n {
+				t.Errorf("Storage.Posts() = %v, want %v", len(got), tt.args.n)
 			}
 		})
 	}
