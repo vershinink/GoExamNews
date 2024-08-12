@@ -23,7 +23,7 @@ type Response struct {
 // Index возвращает клиентское приложение.
 func Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fs := http.StripPrefix("/", http.FileServer(webapp.Serve()))
+		fs := http.StripPrefix("/", http.FileServerFS(webapp.Serve()))
 		w.Header().Set("Content-Type", "text/html")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		fs.ServeHTTP(w, r)

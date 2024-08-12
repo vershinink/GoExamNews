@@ -5,22 +5,14 @@
 package webapp
 
 import (
-	"embed"
-	"io/fs"
-	"log/slog"
+	"testing"
 )
 
-//go:embed dist
-var dist embed.FS
-
-// Serve возвращает каталог с клиентским приложением.
-func Serve() fs.FS {
-	const operation = "webapp.Serve"
-
-	sub, err := fs.Sub(dist, "dist")
+func TestServe(t *testing.T) {
+	sub := Serve()
+	f, err := sub.Open("index.html")
 	if err != nil {
-		slog.Error("webapp error", slog.String("op", operation))
+		t.Errorf("Serve() error = %v", err)
 	}
-
-	return sub
+	defer f.Close()
 }
