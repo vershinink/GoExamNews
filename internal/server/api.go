@@ -23,7 +23,6 @@ type Response struct {
 // Index возвращает клиентское приложение.
 func Index() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		fs := http.StripPrefix("/", http.FileServer(webapp.Serve()))
 		w.Header().Set("Content-Type", "text/html")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -53,20 +52,32 @@ func Posts(st storage.Interface) http.HandlerFunc {
 			return
 		}
 
-		resp := make([]Response, 0, len(posts))
-		for k, p := range posts {
-			var re Response
-			re.ID = k
-			re.Title = p.Title
-			re.Content = p.Content
-			re.PubTime = p.PubTime.Unix()
-			re.Link = p.Link
-			resp = append(resp, re)
-		}
+		resp := respConv(posts)
 
-		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			slog.Error("failed to encode posts", logger.Err(err), slog.String("op", operation))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(resp)
 	}
+}
+
+// respConv преобразует получаемые из БД посты в структуры
+// для клиентского приложения.
+func respConv(posts []storage.Post) []Response {
+	resp := make([]Response, 0, len(posts))
+	for k, p := range posts {
+		var re Response
+		re.ID = k
+		re.Title = p.Title
+		re.Content = p.Content
+		re.PubTime = p.PubTime.Unix()
+		re.Link = p.Link
+		resp = append(resp, re)
+	}
+	return resp
 }

@@ -43,11 +43,15 @@ func TestIndex(t *testing.T) {
 
 func TestPosts(t *testing.T) {
 
+	// Подготовка к тестированию. Заполнение эмуляции БД
+	// тестовыми данными.
+
 	ch := make(chan storage.Post, len(posts))
 	for _, p := range posts {
 		ch <- p
 	}
 	close(ch)
+
 	num, err := st.AddPosts(context.Background(), ch)
 	if err != nil {
 		t.Fatalf("error on adding posts to storage")
@@ -55,6 +59,8 @@ func TestPosts(t *testing.T) {
 	if num != len(posts) {
 		t.Fatalf("error on adding posts to storage")
 	}
+
+	// Тестирование.
 
 	str := fmt.Sprintf("/news/%d", num)
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -33,13 +34,15 @@ func New(cfg *config.Config) *Server {
 }
 
 // Start запускает HTTP сервер в отдельной горутине.
-func (s *Server) Start() {
+func (s *Server) Start(st storage.Interface) {
+	s.API(st)
+
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
 			}
-			log.Printf("failed to start server")
+			slog.Error("failed to start server")
 		}
 	}()
 }

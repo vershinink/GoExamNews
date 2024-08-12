@@ -35,8 +35,7 @@ func main() {
 
 	// Инициализируем сервер, объявляем обработчики API и запускаем сервер.
 	srv := server.New(cfg)
-	srv.API(st)
-	srv.Start()
+	srv.Start(st)
 	slog.Info("Server started")
 
 	// Блокируем выполнение основной горутины и ожидаем сигнала прерывания.

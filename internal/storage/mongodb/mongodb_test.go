@@ -10,8 +10,6 @@ import (
 	"math/rand"
 	"testing"
 	"time"
-
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Тестирование пакета mongodb требует подключения к базе данных
@@ -31,11 +29,6 @@ var posts = []storage.Post{
 		Link:    "https://google.com",
 		PubTime: time.Now(),
 	},
-}
-
-// setTestOpts возвращает опции нового подключения без авторизации.
-func setTestOpts(path string) *options.ClientOptions {
-	return options.Client().ApplyURI(path)
 }
 
 func Test_new(t *testing.T) {
