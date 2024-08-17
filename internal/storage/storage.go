@@ -24,7 +24,9 @@ type Post struct {
 }
 
 // Interface - интерфейс хранилища постов из RSS лент.
-type Interface interface {
+//
+//go:generate go run github.com/vektra/mockery/v2@v2.44.1 --name=DB
+type DB interface {
 	AddPosts(ctx context.Context, posts <-chan Post) (int, error)
 	Posts(ctx context.Context, n int) ([]Post, error)
 	Close() error

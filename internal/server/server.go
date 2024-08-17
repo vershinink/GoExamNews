@@ -34,7 +34,7 @@ func New(cfg *config.Config) *Server {
 }
 
 // Start запускает HTTP сервер в отдельной горутине.
-func (s *Server) Start(st storage.Interface) {
+func (s *Server) Start(st storage.DB) {
 	s.API(st)
 
 	go func() {
@@ -48,7 +48,7 @@ func (s *Server) Start(st storage.Interface) {
 }
 
 // API инициализирует все обработчики API.
-func (s *Server) API(st storage.Interface) {
+func (s *Server) API(st storage.DB) {
 	s.mux.HandleFunc("GET /", Index())
 	s.mux.HandleFunc("GET /news/{n}", Posts(st))
 }

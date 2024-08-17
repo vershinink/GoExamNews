@@ -31,7 +31,7 @@ func Index() http.HandlerFunc {
 }
 
 // Posts возвращает слайс последних по дате постов в формате JSON.
-func Posts(st storage.Interface) http.HandlerFunc {
+func Posts(st storage.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const operation = "server.Posts"
 
@@ -48,21 +48,22 @@ func Posts(st storage.Interface) http.HandlerFunc {
 		posts, err := st.Posts(ctx, n)
 		if err != nil {
 			slog.Error("failed to receive posts", logger.Err(err), slog.String("op", operation))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)
 			return
 		}
 
 		resp := respConv(posts)
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		err = json.NewEncoder(w).Encode(resp)
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "\t")
+		err = enc.Encode(resp)
 		if err != nil {
 			slog.Error("failed to encode posts", logger.Err(err), slog.String("op", operation))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "failed to encode posts", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 	}
 }
 
