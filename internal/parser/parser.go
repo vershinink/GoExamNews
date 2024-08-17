@@ -34,12 +34,12 @@ type Parser struct {
 	links   []string
 	period  time.Duration
 	client  *http.Client
-	storage storage.Interface
+	storage storage.DB
 	done    chan bool
 }
 
 // New - конструктор парсера RSS.
-func New(cfg *config.Config, st storage.Interface) *Parser {
+func New(cfg *config.Config, st storage.DB) *Parser {
 	parser := &Parser{
 		links:  cfg.RSSFeeds,
 		period: cfg.RequestPeriod,
@@ -47,7 +47,7 @@ func New(cfg *config.Config, st storage.Interface) *Parser {
 			Timeout: reqTime,
 		},
 		storage: st,
-		done:    make(chan bool),
+		done:    make(chan bool, len(cfg.RSSFeeds)),
 	}
 	return parser
 }
@@ -99,6 +99,7 @@ func (p *Parser) parseRSS(url string) {
 	go func() {
 		<-p.done
 		cancel()
+		slog.Debug("parsing stopped", slog.String("url", url))
 	}()
 
 	// Создаем новый запрос с контекстом для переданного url. Контекст
@@ -161,6 +162,9 @@ func (p *Parser) parseRSS(url string) {
 // пост и отправляет в канал.
 func postConv(feed rss.Feed) <-chan storage.Post {
 	ln := len(feed.Channel.Items)
+	if ln == 0 {
+		return nil
+	}
 	posts := make(chan storage.Post, ln)
 	var wg sync.WaitGroup
 	wg.Add(ln)
