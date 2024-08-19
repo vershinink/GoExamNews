@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"GoNews/internal/logger"
 	"GoNews/internal/mocks"
 	"GoNews/internal/rss"
 	"GoNews/internal/storage"
@@ -19,6 +20,9 @@ import (
 )
 
 func TestParser_Start(t *testing.T) {
+	logger.Discard()
+	t.Parallel()
+
 	feed, err := os.ReadFile("testFeed.xml")
 	if err != nil {
 		t.Fatalf("Parser.Start() error = cannot read test XML feed")
@@ -123,6 +127,9 @@ func TestParser_Start(t *testing.T) {
 }
 
 func TestParser_parseRSS(t *testing.T) {
+	logger.Discard()
+	t.Parallel()
+
 	feed, err := os.ReadFile("testFeed.xml")
 	if err != nil {
 		t.Fatalf("Parser.parseRSS() error = cannot read test XML feed")
@@ -242,6 +249,8 @@ func TestParser_parseRSS(t *testing.T) {
 }
 
 func Test_postConv(t *testing.T) {
+	t.Parallel()
+
 	file, err := os.ReadFile("testFeed.xml")
 	if err != nil {
 		t.Fatalf("postConv() error = cannot read test XML file")
@@ -276,8 +285,6 @@ func Test_postConv(t *testing.T) {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			posts := postConv(tt.feed)
 			if tt.want == 0 {
 				if posts == nil {
@@ -299,6 +306,8 @@ func Test_postConv(t *testing.T) {
 }
 
 func Test_timeConv(t *testing.T) {
+	t.Parallel()
+
 	tm, _ := time.Parse(time.RFC1123, "Sat, 27 Jul 2024 00:00:00 UTC")
 	unix := tm.Unix()
 
@@ -322,8 +331,6 @@ func Test_timeConv(t *testing.T) {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			if got := timeConv(tt.time).Unix(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("timeConv() = %v, want %v", got, tt.want)
 			}

@@ -45,7 +45,7 @@ var (
 func TestParse(t *testing.T) {
 	data, err := os.ReadFile("testFeed.xml")
 	if err != nil {
-		t.Fatalf("cannot read test XML feed")
+		t.Fatalf("Parse() error = cannot read test XML feed")
 	}
 	dataOK := bytes.NewReader(data)
 
@@ -110,17 +110,15 @@ func TestParse(t *testing.T) {
 			}
 
 			// Если вернулась ошибка, и мы ее ожидали - проверяем тип ошибки.
+			// При совпадении завершаем тест-кейс успешно.
 			if tt.wantErr {
 				if errors.Is(err, tt.gotErr) {
-					t.Logf("Parse() error matched, got = %v, want = %v", err, tt.gotErr)
-					return
+					t.Skipf("Parse() error matched, got = %v, want = %v", err, tt.gotErr)
 				}
 				if errors.As(err, &errDataIncorrect) {
-					t.Logf("Parse() error matched, got = %v, want = %v", err, tt.gotErr)
-					return
+					t.Skipf("Parse() error matched, got = %v, want = %v", err, tt.gotErr)
 				}
-				// Если ошибка не совпадает с описанными в кейсах, то проваливаем тест и выводим эту ошибку.
-				t.Errorf("Parse() error nor matched, got = %v, want = %v", err, tt.gotErr)
+				t.Fatalf("Parse() error not matched, got = %v, want = %v", err, tt.gotErr)
 				return
 			}
 
@@ -128,7 +126,7 @@ func TestParse(t *testing.T) {
 			// парсинг не прошел - проваливаем тест.
 			got := len(feed.Channel.Items)
 			if got != tt.count {
-				t.Errorf("Parse() = %v, want = %v", got, tt.count)
+				t.Errorf("Parse() length = %v, want = %v", got, tt.count)
 			}
 		})
 	}

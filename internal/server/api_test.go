@@ -41,16 +41,17 @@ func TestIndex(t *testing.T) {
 	mux.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
-		t.Errorf("unexpected status code: got = %v, want = %v", rr.Code, http.StatusOK)
+		t.Errorf("Index() error = unexpected status code, got = %v, want = %v", rr.Code, http.StatusOK)
 	}
 
 	if rr.Body.Len() == 0 {
-		t.Errorf("empty body")
+		t.Errorf("Index() error = empty body")
 	}
 }
 
 func TestPosts(t *testing.T) {
 	logger.Discard()
+	t.Parallel()
 
 	tests := []struct {
 		name        string
@@ -124,7 +125,7 @@ func TestPosts(t *testing.T) {
 			resp := []Response{}
 			err := json.Unmarshal([]byte(body), &resp)
 			if err != nil {
-				t.Fatalf("cannot unmarshal response")
+				t.Fatalf("Posts() error = cannot unmarshal response")
 			}
 
 			// Проверим только совпадение ссылок.
@@ -134,13 +135,15 @@ func TestPosts(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(urls, tt.wantURL) {
-				t.Fatalf("Posts() = %v, want %v", urls, tt.wantURL)
+				t.Errorf("Posts() = %v, want %v", urls, tt.wantURL)
 			}
 		})
 	}
 }
 
 func Test_respConv(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		posts []storage.Post
 	}
@@ -156,11 +159,7 @@ func Test_respConv(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			resp := respConv(tt.args.posts)
 			if got := len(resp); got != tt.wantLen {
 				t.Errorf("respConv() = %v, want %v", got, tt.wantLen)

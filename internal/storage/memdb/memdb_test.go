@@ -15,6 +15,7 @@ var posts = []storage.Post{
 }
 
 func TestStorage_AddPosts(t *testing.T) {
+	t.Parallel()
 
 	ch := make(chan storage.Post, len(posts))
 	for _, p := range posts {
@@ -51,6 +52,8 @@ func TestStorage_AddPosts(t *testing.T) {
 }
 
 func TestStorage_Posts(t *testing.T) {
+	t.Parallel()
+
 	var arr = []storage.Post{
 		{
 			ID:      "1",
