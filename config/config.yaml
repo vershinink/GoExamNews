@@ -1,11 +1,14 @@
+# RSS
 rss: # список ресурсов rss
  - "https://habr.com/ru/rss/hub/go/all/?fl=ru"
  - "https://habr.com/ru/rss/best/daily/?fl=ru"
  - "https://cprss.s3.amazonaws.com/golangweekly.com.xml"
 request_period: 5m # период опроса ресурсов rss
+# MongoDB
 storage_path: "mongodb://localhost:27017/" # адрес для подключения к MongoDB
 storage_user: "admin" # пользователь для аутентификации в MongoDB
 storage_passwd: "DB_PASSWD" # пароль для аутентификации в MongoDB
+# Server
 http_server:
   address: "localhost:80"
   read_timeout: 5s

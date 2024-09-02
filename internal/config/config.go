@@ -29,9 +29,9 @@ type HTTPServer struct {
 // переменной окружения CONFIG_PATH_SF, пароль для доступа к БД - из переменной
 // окружения DB_PASSWD. Если не удается, то завершает приложение с ошибкой.
 func MustLoad() *Config {
-	configPath := os.Getenv("CONFIG_PATH_SF")
+	configPath := os.Getenv("NEWS_CONFIG_PATH")
 	if configPath == "" {
-		log.Fatal("CONFIG_PATH_SF is not set")
+		log.Fatal("NEWS_CONFIG_PATH is not set")
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -49,7 +49,10 @@ func MustLoad() *Config {
 		log.Fatalf("cannot decode config file: %s, %s", configPath, err)
 	}
 
-	cfg.StoragePasswd = os.Getenv("DB_PASSWD")
+	cfg.StoragePasswd = os.Getenv("NEWS_DB_PASSWD")
+	if cfg.StoragePasswd == "" {
+		log.Printf("NEWS_DB_PASSWD is not set\n")
+	}
 
 	return &cfg
 }
