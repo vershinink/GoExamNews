@@ -35,8 +35,6 @@ func New(cfg *config.Config) *Server {
 
 // Start запускает HTTP сервер в отдельной горутине.
 func (s *Server) Start(st storage.DB) {
-	s.API(st)
-
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
@@ -50,7 +48,9 @@ func (s *Server) Start(st storage.DB) {
 // API инициализирует все обработчики API.
 func (s *Server) API(st storage.DB) {
 	// s.mux.HandleFunc("GET /", Index())
-	s.mux.HandleFunc("GET /news/{n}", Posts(st))
+	s.mux.HandleFunc("GET /news/id/{id}", PostByID(st))
+	s.mux.HandleFunc("GET /news/{n}", PostsWebApp(st))
+	s.mux.HandleFunc("GET /news", Posts(st))
 }
 
 // Shutdown останавливает сервер используя graceful shutdown.

@@ -12,6 +12,7 @@ import (
 var (
 	ErrEmptyDB     = errors.New("database is empty")
 	ErrZeroRequest = errors.New("requested 0 posts")
+	ErrEmptyId     = errors.New("empty id")
 )
 
 // Post - структура поста из RSS ленты для работы с БД.
@@ -25,8 +26,15 @@ type Post struct {
 
 // TextSearch - структура запроса для текстового поиска в БД
 // по заголовкам постов.
-type TextSearch struct {
-	Query string
+type Options struct {
+	// SearchQuery - запрос для текстового поиска.
+	SearchQuery string
+
+	// Count - максимальное число возвращаемых постов.
+	Count int
+
+	// Offset - число постов на сдвиг в пагинации.
+	Offset int
 }
 
 // Interface - интерфейс хранилища постов из RSS лент.
@@ -34,6 +42,8 @@ type TextSearch struct {
 //go:generate go run github.com/vektra/mockery/v2@v2.44.1 --name=DB
 type DB interface {
 	AddPosts(ctx context.Context, posts <-chan Post) (int, error)
-	Posts(ctx context.Context, n int, q ...*TextSearch) ([]Post, error)
+	Posts(ctx context.Context, op ...*Options) ([]Post, error)
+	Count(ctx context.Context, q ...*Options) (int64, error)
+	PostById(ctx context.Context, id string) (Post, error)
 	Close() error
 }

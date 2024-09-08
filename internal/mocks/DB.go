@@ -60,14 +60,77 @@ func (_m *DB) Close() error {
 	return r0
 }
 
-// Posts provides a mock function with given fields: ctx, n, q
-func (_m *DB) Posts(ctx context.Context, n int, q ...*storage.TextSearch) ([]storage.Post, error) {
+// Count provides a mock function with given fields: ctx, q
+func (_m *DB) Count(ctx context.Context, q ...*storage.Options) (int64, error) {
 	_va := make([]interface{}, len(q))
 	for _i := range q {
 		_va[_i] = q[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, ctx, n)
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Count")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...*storage.Options) (int64, error)); ok {
+		return rf(ctx, q...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ...*storage.Options) int64); ok {
+		r0 = rf(ctx, q...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ...*storage.Options) error); ok {
+		r1 = rf(ctx, q...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PostById provides a mock function with given fields: ctx, id
+func (_m *DB) PostById(ctx context.Context, id string) (storage.Post, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostById")
+	}
+
+	var r0 storage.Post
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (storage.Post, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) storage.Post); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(storage.Post)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Posts provides a mock function with given fields: ctx, op
+func (_m *DB) Posts(ctx context.Context, op ...*storage.Options) ([]storage.Post, error) {
+	_va := make([]interface{}, len(op))
+	for _i := range op {
+		_va[_i] = op[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
@@ -77,19 +140,19 @@ func (_m *DB) Posts(ctx context.Context, n int, q ...*storage.TextSearch) ([]sto
 
 	var r0 []storage.Post
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, ...*storage.TextSearch) ([]storage.Post, error)); ok {
-		return rf(ctx, n, q...)
+	if rf, ok := ret.Get(0).(func(context.Context, ...*storage.Options) ([]storage.Post, error)); ok {
+		return rf(ctx, op...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int, ...*storage.TextSearch) []storage.Post); ok {
-		r0 = rf(ctx, n, q...)
+	if rf, ok := ret.Get(0).(func(context.Context, ...*storage.Options) []storage.Post); ok {
+		r0 = rf(ctx, op...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]storage.Post)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int, ...*storage.TextSearch) error); ok {
-		r1 = rf(ctx, n, q...)
+	if rf, ok := ret.Get(1).(func(context.Context, ...*storage.Options) error); ok {
+		r1 = rf(ctx, op...)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -10,7 +10,7 @@ storage_user: "admin" # пользователь для аутентификац
 storage_passwd: "DB_PASSWD" # пароль для аутентификации в MongoDB
 # Server
 http_server:
-  address: "localhost:80"
+  address: "localhost:10501"
   read_timeout: 5s
   write_timeout: 10s
   idle_timeout: 60s

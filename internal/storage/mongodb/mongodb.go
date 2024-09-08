@@ -104,7 +104,7 @@ func (s *Storage) Close() error {
 // их в БД. Возвращает количество успешно записанных постов
 // и ошибку, отличную от duplicate key error.
 func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int, error) {
-	const operation = "storage.mongodb.Posts"
+	const operation = "storage.mongodb.AddPosts"
 
 	var input []interface{}
 	for p := range posts {
@@ -128,25 +128,39 @@ func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int,
 	return len(res.InsertedIDs), nil
 }
 
-// Posts возвращает указанное число последних постов по дате
-// публикации из БД. Опционально принимает запрос на текстовый
-// поиск в названии поста.
-func (s *Storage) Posts(ctx context.Context, n int, q ...*storage.TextSearch) ([]storage.Post, error) {
+// Posts возвращает посты из БД в соответствии с переданными опциями.
+// Опции включают в себя лимит числа постов, оффсет для пагинации и
+// запрос на текстовый поиск в заголовках.
+// Если параметр опции nil, то вернет все посты, отсортированные по
+// дате публикации.
+func (s *Storage) Posts(ctx context.Context, op ...*storage.Options) ([]storage.Post, error) {
 	const operation = "storage.mongodb.Posts"
-
-	if n == 0 {
-		return nil, fmt.Errorf("%s: %w", operation, storage.ErrZeroRequest)
-	}
 
 	filter := bson.D{}
 	sort := bson.D{{Key: "pubTime", Value: -1}}
+	opts := options.Find()
 
-	if q[0] != nil {
-		filter = bson.D{{Key: "$text", Value: bson.D{{Key: "$search", Value: q[0].Query}}}}
-		sort = bson.D{{Key: "score", Value: bson.D{{Key: "$meta", Value: "textScore"}}}}
+	var query string
+	var lim, off int64
+	if op[0] != nil {
+		query = op[0].SearchQuery
+		lim = int64(op[0].Count)
+		off = int64(op[0].Offset)
 	}
 
-	opts := options.Find().SetSort(sort).SetLimit(int64(n))
+	if query != "" {
+		filter = bson.D{{Key: "$text", Value: bson.D{{Key: "$search", Value: query}}}}
+		sort = bson.D{{Key: "score", Value: bson.D{{Key: "$meta", Value: "textScore"}}}}
+	}
+	opts = opts.SetSort(sort)
+
+	if lim > 0 {
+		opts = opts.SetLimit(lim)
+	}
+
+	if off > 0 {
+		opts = opts.SetSkip(off)
+	}
 
 	collection := s.db.Database(dbName).Collection(colName)
 	res, err := collection.Find(ctx, filter, opts)
@@ -165,4 +179,52 @@ func (s *Storage) Posts(ctx context.Context, n int, q ...*storage.TextSearch) ([
 	}
 
 	return posts, nil
+}
+
+// Count возвращает число постов, соответствующих условиям поиска.
+func (s *Storage) Count(ctx context.Context, op ...*storage.Options) (int64, error) {
+	const operation = "storage.mongodb.Count"
+
+	filter := bson.D{}
+	opts := options.Count().SetHint("_id_")
+
+	if op[0] != nil && op[0].SearchQuery != "" {
+		filter = bson.D{{Key: "$text", Value: bson.D{{Key: "$search", Value: op[0].SearchQuery}}}}
+		opts = nil
+	}
+
+	collection := s.db.Database(dbName).Collection(colName)
+	res, err := collection.CountDocuments(ctx, filter, opts)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", operation, err)
+	}
+	return res, nil
+}
+
+func (s *Storage) PostById(ctx context.Context, id string) (storage.Post, error) {
+	const operation = "storage.mongodb.PostById"
+	var post storage.Post
+
+	if id == "" {
+		return post, fmt.Errorf("%s: %w", operation, storage.ErrEmptyId)
+	}
+
+	obj, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return post, fmt.Errorf("%s: %w", operation, err)
+	}
+
+	collection := s.db.Database(dbName).Collection(colName)
+	filter := bson.D{{Key: "_id", Value: obj}}
+	res := collection.FindOne(ctx, filter)
+	if res.Err() != nil {
+		return post, fmt.Errorf("%s: %w", operation, res.Err())
+	}
+
+	err = res.Decode(&post)
+	if err != nil {
+		return post, fmt.Errorf("%s: %w", operation, err)
+	}
+
+	return post, nil
 }
