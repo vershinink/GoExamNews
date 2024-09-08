@@ -6,6 +6,7 @@ import (
 	"GoNews/internal/logger"
 	"GoNews/internal/mocks"
 	"GoNews/internal/storage"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,9 +22,9 @@ import (
 
 // posts - тестовые данные.
 var posts = []storage.Post{
-	{ID: "1", Title: "Title 1", Content: "Content 1", PubTime: time.Now(), Link: "https://google.com"},
-	{ID: "2", Title: "Title 2", Content: "Content 3", PubTime: time.Now(), Link: "https://ya.ru"},
-	{ID: "3", Title: "Title 2", Content: "Content 3", PubTime: time.Now(), Link: "https://bing.com"},
+	{ID: "1", Title: "Title one", Content: "Content 1", PubTime: time.Now(), Link: "https://google.com"},
+	{ID: "2", Title: "Title two", Content: "Content 3", PubTime: time.Now(), Link: "https://ya.ru"},
+	{ID: "3", Title: "Title three", Content: "Content 3", PubTime: time.Now(), Link: "https://bing.com"},
 }
 
 func TestIndex(t *testing.T) {
@@ -56,6 +57,7 @@ func TestPosts(t *testing.T) {
 	tests := []struct {
 		name        string
 		argumentURL string
+		searchParam string
 		wantURL     []string
 		respError   string
 		mockError   error
@@ -63,6 +65,7 @@ func TestPosts(t *testing.T) {
 		{
 			name:        "Posts_OK",
 			argumentURL: "3",
+			searchParam: "",
 			wantURL:     []string{"https://google.com", "https://ya.ru", "https://bing.com"},
 			respError:   "",
 			mockError:   nil,
@@ -70,6 +73,7 @@ func TestPosts(t *testing.T) {
 		{
 			name:        "Incorrect_GET_request",
 			argumentURL: "asd",
+			searchParam: "",
 			wantURL:     nil,
 			respError:   "incorrect posts number",
 			mockError:   nil,
@@ -77,6 +81,23 @@ func TestPosts(t *testing.T) {
 		{
 			name:        "DB_error",
 			argumentURL: "3",
+			searchParam: "",
+			wantURL:     nil,
+			respError:   "failed to receive posts from DB",
+			mockError:   errors.New("DB error"),
+		},
+		{
+			name:        "Search_OK",
+			argumentURL: "3",
+			searchParam: "one",
+			wantURL:     []string{"https://google.com"},
+			respError:   "",
+			mockError:   nil,
+		},
+		{
+			name:        "Search_Not_found",
+			argumentURL: "3",
+			searchParam: "asdf",
 			wantURL:     nil,
 			respError:   "failed to receive posts from DB",
 			mockError:   errors.New("DB error"),
@@ -94,8 +115,23 @@ func TestPosts(t *testing.T) {
 			// если планируем дойти до него в тестируемой функции.
 			if tt.respError == "" || tt.mockError != nil {
 				stMock.
-					On("Posts", mock.Anything, mock.AnythingOfType("int")).
-					Return(posts, tt.mockError).
+					On("Posts", mock.Anything, mock.AnythingOfType("int"), mock.Anything).
+					Return(func(ctx context.Context, n int, q ...*storage.TextSearch) ([]storage.Post, error) {
+						if q[0] == nil {
+							return posts, tt.mockError
+						}
+						text := q[0].Query
+						switch text {
+						case "one":
+							return posts[:1], tt.mockError
+						case "two":
+							return posts[1:2], tt.mockError
+						case "three":
+							return posts[2:], tt.mockError
+						default:
+							return posts, tt.mockError
+						}
+					}).
 					Once()
 			}
 
@@ -105,6 +141,9 @@ func TestPosts(t *testing.T) {
 			defer srv.Close()
 
 			str := fmt.Sprintf("/news/%s", tt.argumentURL)
+			if tt.searchParam != "" {
+				str = fmt.Sprintf("%s?s=%s", str, tt.searchParam)
+			}
 			req := httptest.NewRequest(http.MethodGet, str, nil)
 			rr := httptest.NewRecorder()
 

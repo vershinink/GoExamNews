@@ -23,11 +23,17 @@ type Post struct {
 	Link    string    `json:"link" bson:"link"`
 }
 
+// TextSearch - структура запроса для текстового поиска в БД
+// по заголовкам постов.
+type TextSearch struct {
+	Query string
+}
+
 // Interface - интерфейс хранилища постов из RSS лент.
 //
 //go:generate go run github.com/vektra/mockery/v2@v2.44.1 --name=DB
 type DB interface {
 	AddPosts(ctx context.Context, posts <-chan Post) (int, error)
-	Posts(ctx context.Context, n int) ([]Post, error)
+	Posts(ctx context.Context, n int, q ...*TextSearch) ([]Post, error)
 	Close() error
 }

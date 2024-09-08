@@ -60,9 +60,16 @@ func (_m *DB) Close() error {
 	return r0
 }
 
-// Posts provides a mock function with given fields: ctx, n
-func (_m *DB) Posts(ctx context.Context, n int) ([]storage.Post, error) {
-	ret := _m.Called(ctx, n)
+// Posts provides a mock function with given fields: ctx, n, q
+func (_m *DB) Posts(ctx context.Context, n int, q ...*storage.TextSearch) ([]storage.Post, error) {
+	_va := make([]interface{}, len(q))
+	for _i := range q {
+		_va[_i] = q[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, n)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Posts")
@@ -70,19 +77,19 @@ func (_m *DB) Posts(ctx context.Context, n int) ([]storage.Post, error) {
 
 	var r0 []storage.Post
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) ([]storage.Post, error)); ok {
-		return rf(ctx, n)
+	if rf, ok := ret.Get(0).(func(context.Context, int, ...*storage.TextSearch) ([]storage.Post, error)); ok {
+		return rf(ctx, n, q...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) []storage.Post); ok {
-		r0 = rf(ctx, n)
+	if rf, ok := ret.Get(0).(func(context.Context, int, ...*storage.TextSearch) []storage.Post); ok {
+		r0 = rf(ctx, n, q...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]storage.Post)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = rf(ctx, n)
+	if rf, ok := ret.Get(1).(func(context.Context, int, ...*storage.TextSearch) error); ok {
+		r1 = rf(ctx, n, q...)
 	} else {
 		r1 = ret.Error(1)
 	}

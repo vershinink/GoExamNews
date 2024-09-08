@@ -44,8 +44,14 @@ func Posts(st storage.DB) http.HandlerFunc {
 			return
 		}
 
+		var sch *storage.TextSearch
+		text := r.URL.Query().Get("s")
+		if text != "" {
+			sch = &storage.TextSearch{Query: text}
+		}
+
 		ctx := r.Context()
-		posts, err := st.Posts(ctx, n)
+		posts, err := st.Posts(ctx, n, sch)
 		if err != nil {
 			slog.Error("failed to receive posts", logger.Err(err), slog.String("op", operation))
 			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)

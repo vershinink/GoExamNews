@@ -75,14 +75,19 @@ func new(opts *options.ClientOptions) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", operation, err)
 	}
 
+	collection := db.Database(dbName).Collection(colName)
+
 	// Создаем уникальный индекс по полю title, чтобы избежать
 	// записи уже существующих постов.
-	collection := db.Database(dbName).Collection(colName)
-	indexModel := mongo.IndexModel{
+	indexUniq := mongo.IndexModel{
 		Keys:    bson.D{{Key: "title", Value: -1}},
 		Options: options.Index().SetUnique(true),
 	}
-	_, err = collection.Indexes().CreateOne(tm, indexModel)
+	// Создаем индекс текстового поиска по полю title.
+	indexText := mongo.IndexModel{
+		Keys: bson.D{{Key: "title", Value: "text"}},
+	}
+	_, err = collection.Indexes().CreateMany(tm, []mongo.IndexModel{indexUniq, indexText})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", operation, err)
 	}
@@ -124,16 +129,24 @@ func (s *Storage) AddPosts(ctx context.Context, posts <-chan storage.Post) (int,
 }
 
 // Posts возвращает указанное число последних постов по дате
-// публикации из БД.
-func (s *Storage) Posts(ctx context.Context, n int) ([]storage.Post, error) {
+// публикации из БД. Опционально принимает запрос на текстовый
+// поиск в названии поста.
+func (s *Storage) Posts(ctx context.Context, n int, q ...*storage.TextSearch) ([]storage.Post, error) {
 	const operation = "storage.mongodb.Posts"
 
 	if n == 0 {
 		return nil, fmt.Errorf("%s: %w", operation, storage.ErrZeroRequest)
 	}
 
-	opts := options.Find().SetSort(bson.D{{Key: "pubTime", Value: -1}}).SetLimit(int64(n))
 	filter := bson.D{}
+	sort := bson.D{{Key: "pubTime", Value: -1}}
+
+	if q[0] != nil {
+		filter = bson.D{{Key: "$text", Value: bson.D{{Key: "$search", Value: q[0].Query}}}}
+		sort = bson.D{{Key: "score", Value: bson.D{{Key: "$meta", Value: "textScore"}}}}
+	}
+
+	opts := options.Find().SetSort(sort).SetLimit(int64(n))
 
 	collection := s.db.Database(dbName).Collection(colName)
 	res, err := collection.Find(ctx, filter, opts)

@@ -49,7 +49,7 @@ func (s *Server) Start(st storage.DB) {
 
 // API инициализирует все обработчики API.
 func (s *Server) API(st storage.DB) {
-	s.mux.HandleFunc("GET /", Index())
+	// s.mux.HandleFunc("GET /", Index())
 	s.mux.HandleFunc("GET /news/{n}", Posts(st))
 }
 
