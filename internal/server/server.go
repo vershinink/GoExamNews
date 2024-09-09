@@ -2,6 +2,7 @@ package server
 
 import (
 	"GoNews/internal/config"
+	"GoNews/internal/middleware"
 	"GoNews/internal/storage"
 	"context"
 	"errors"
@@ -43,6 +44,12 @@ func (s *Server) Start(st storage.DB) {
 			slog.Error("failed to start server")
 		}
 	}()
+}
+
+// Middleware инициализирует все обработчики middleware.
+func (s *Server) Middleware() {
+	wrappedMux := middleware.RequestID(middleware.Logger(s.mux))
+	s.srv.Handler = wrappedMux
 }
 
 // API инициализирует все обработчики API.

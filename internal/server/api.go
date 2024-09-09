@@ -3,6 +3,7 @@ package server
 
 import (
 	"GoNews/internal/logger"
+	"GoNews/internal/middleware"
 	"GoNews/internal/storage"
 	"GoNews/webapp"
 	"encoding/json"
@@ -52,13 +53,18 @@ func Index() http.HandlerFunc {
 // в формате JSON. Используется только в работе приложения из пакета webapp.
 func PostsWebApp(st storage.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const operation = "server.Posts"
+		const operation = "server.PostsWebApp"
 
-		slog.Info("new request to receive last posts")
+		log := slog.Default().With(
+			slog.String("op", operation),
+			slog.String("request_id", middleware.GetReqID(r.Context())),
+		)
+
+		log.Info("new request to receive last posts")
 
 		n, err := strconv.Atoi(r.PathValue("n"))
 		if err != nil {
-			slog.Error("incorrect posts number", slog.String("op", operation))
+			log.Error("incorrect posts number")
 			http.Error(w, "incorrect posts number", http.StatusBadRequest)
 			return
 		}
@@ -72,7 +78,7 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 		ctx := r.Context()
 		posts, err := st.Posts(ctx, opt)
 		if err != nil {
-			slog.Error("failed to receive posts", logger.Err(err), slog.String("op", operation))
+			log.Error("failed to receive posts", logger.Err(err))
 			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)
 			return
 		}
@@ -84,11 +90,12 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 		enc.SetIndent("", "\t")
 		err = enc.Encode(resp)
 		if err != nil {
-			slog.Error("failed to encode posts", logger.Err(err), slog.String("op", operation))
+			log.Error("failed to encode posts", logger.Err(err))
 			http.Error(w, "failed to encode posts", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log = nil
 	}
 }
 
@@ -97,9 +104,14 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 // запросу постов из БД,
 func Posts(st storage.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const operation = "server.PostsByPage"
+		const operation = "server.Posts"
 
-		slog.Info("new request to receive posts")
+		log := slog.Default().With(
+			slog.String("op", operation),
+			slog.String("request_id", middleware.GetReqID(r.Context())),
+		)
+
+		log.Info("new request to receive posts")
 
 		page, err := strconv.Atoi(r.URL.Query().Get("page"))
 		if err != nil || page < 1 {
@@ -116,12 +128,12 @@ func Posts(st storage.DB) http.HandlerFunc {
 		ctx := r.Context()
 		num, err := st.Count(ctx, opt)
 		if err != nil {
-			slog.Error("failed to count posts", logger.Err(err), slog.String("op", operation))
+			log.Error("failed to count posts", logger.Err(err))
 			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)
 			return
 		}
 		if num == 0 {
-			slog.Error("posts not found", logger.Err(err), slog.String("op", operation))
+			log.Error("posts not found", logger.Err(err))
 			http.Error(w, "posts not found", http.StatusInternalServerError)
 			return
 		}
@@ -139,7 +151,7 @@ func Posts(st storage.DB) http.HandlerFunc {
 		// Получаем посты для соответствующей страницы.
 		posts, err := st.Posts(ctx, opt)
 		if err != nil {
-			slog.Error("failed to receive posts", logger.Err(err), slog.String("op", operation))
+			log.Error("failed to receive posts", logger.Err(err))
 			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)
 			return
 		}
@@ -149,11 +161,12 @@ func Posts(st storage.DB) http.HandlerFunc {
 		enc := json.NewEncoder(w)
 		err = enc.Encode(resp)
 		if err != nil {
-			slog.Error("failed to encode posts", logger.Err(err), slog.String("op", operation))
+			log.Error("failed to encode posts", logger.Err(err))
 			http.Error(w, "failed to encode posts", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log = nil
 	}
 }
 
@@ -162,11 +175,16 @@ func PostByID(st storage.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const operation = "server.PostByID"
 
-		slog.Info("new request to receive post by ID")
+		log := slog.Default().With(
+			slog.String("op", operation),
+			slog.String("request_id", middleware.GetReqID(r.Context())),
+		)
+
+		log.Info("new request to receive post by ID")
 
 		id := r.PathValue("id")
 		if id == "" {
-			slog.Error("empty post id", slog.String("op", operation))
+			log.Error("empty post id")
 			http.Error(w, "incorrect post id", http.StatusBadRequest)
 			return
 		}
@@ -174,7 +192,7 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		ctx := r.Context()
 		post, err := st.PostById(ctx, id)
 		if err != nil {
-			slog.Error("failed to receive post by id", slog.String("op", operation), slog.String("id", id))
+			log.Error("failed to receive post by id", slog.String("id", id))
 			http.Error(w, "post not found", http.StatusBadRequest)
 			return
 		}
@@ -182,11 +200,12 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		err = json.NewEncoder(w).Encode(post)
 		if err != nil {
-			slog.Error("failed to encode post", logger.Err(err), slog.String("op", operation))
+			log.Error("failed to encode post", logger.Err(err))
 			http.Error(w, "failed to encode post", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log = nil
 	}
 }
 

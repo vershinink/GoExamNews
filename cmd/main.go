@@ -36,6 +36,7 @@ func main() {
 	// Инициализируем сервер, объявляем обработчики API и запускаем сервер.
 	srv := server.New(cfg)
 	srv.API(st)
+	srv.Middleware()
 	srv.Start(st)
 	slog.Info("Server started")
 
