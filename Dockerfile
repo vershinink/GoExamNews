@@ -24,7 +24,7 @@ ENV NEWS_CONFIG_PATH=./config/config.yaml
 
 RUN mkdir -p /root/config
 
-COPY --from=builder /go/src/new/config ./config
+COPY --from=builder /go/src/news/config ./config
 
 COPY --from=builder /go/src/news/news .
 
