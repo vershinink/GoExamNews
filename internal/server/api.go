@@ -60,7 +60,7 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		log.Info("new request to receive last posts")
+		log.Info("request to receive last posts")
 
 		n, err := strconv.Atoi(r.PathValue("n"))
 		if err != nil {
@@ -82,6 +82,7 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)
 			return
 		}
+		log.Debug("posts received successfully", slog.Int("num", len(posts)))
 
 		resp := respConv(posts)
 
@@ -95,6 +96,7 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log.Info("request served successfuly")
 		log = nil
 	}
 }
@@ -111,7 +113,7 @@ func Posts(st storage.DB) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		log.Info("new request to receive posts")
+		log.Info("request to receive posts")
 
 		page, err := strconv.Atoi(r.URL.Query().Get("page"))
 		if err != nil || page < 1 {
@@ -137,6 +139,7 @@ func Posts(st storage.DB) http.HandlerFunc {
 			http.Error(w, "posts not found", http.StatusInternalServerError)
 			return
 		}
+		log.Debug("posts count successfully", slog.Int64("num", num))
 
 		// Высчитываем и формируем объект пагинации.
 		pgCount := int(num) / countOnPage
@@ -155,6 +158,7 @@ func Posts(st storage.DB) http.HandlerFunc {
 			http.Error(w, "failed to receive posts from DB", http.StatusInternalServerError)
 			return
 		}
+		log.Debug("posts received successfully", slog.Int("num", len(posts)))
 
 		resp := Response{Pagination: pg, Posts: posts}
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -166,6 +170,7 @@ func Posts(st storage.DB) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log.Info("request served successfuly")
 		log = nil
 	}
 }
@@ -180,7 +185,7 @@ func PostByID(st storage.DB) http.HandlerFunc {
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		log.Info("new request to receive post by ID")
+		log.Info("request to receive post by ID")
 
 		id := r.PathValue("id")
 		if id == "" {
@@ -196,6 +201,7 @@ func PostByID(st storage.DB) http.HandlerFunc {
 			http.Error(w, "post not found", http.StatusBadRequest)
 			return
 		}
+		log.Debug("post by ID received successfully", slog.String("id", id))
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		err = json.NewEncoder(w).Encode(post)
@@ -205,6 +211,7 @@ func PostByID(st storage.DB) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log.Info("request served successfuly", slog.String("id", id))
 		log = nil
 	}
 }

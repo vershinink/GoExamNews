@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -65,9 +66,9 @@ func (s *Storage) trun() error {
 func Test_new(t *testing.T) {
 
 	// Для тестирования авторизации.
-	// opts := setOpts(path, "admin", os.Getenv("DB_PASSWD"))
+	opts := setOpts(path, "admin", os.Getenv("MONGO_DB_PASSWD"))
 
-	opts := setTestOpts(path)
+	//opts := setTestOpts(path)
 	st, err := new(opts)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -86,7 +87,8 @@ func TestStorage_AddPosts(t *testing.T) {
 	}
 	close(ch)
 
-	st, err := new(setTestOpts(path))
+	opts := setOpts(path, "admin", os.Getenv("MONGO_DB_PASSWD"))
+	st, err := new(opts)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -124,7 +126,8 @@ func TestStorage_Posts(t *testing.T) {
 	dbName = "testDB"
 	colName = "testCollection"
 
-	st, err := new(setTestOpts(path))
+	opts := setOpts(path, "admin", os.Getenv("MONGO_DB_PASSWD"))
+	st, err := new(opts)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -216,7 +219,8 @@ func TestStorage_Count(t *testing.T) {
 	dbName = "testDB"
 	colName = "testCollection"
 
-	st, err := new(setTestOpts(path))
+	opts := setOpts(path, "admin", os.Getenv("MONGO_DB_PASSWD"))
+	st, err := new(opts)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -278,7 +282,8 @@ func TestStorage_PostById(t *testing.T) {
 	dbName = "testDB"
 	colName = "testCollection"
 
-	st, err := new(setTestOpts(path))
+	opts := setOpts(path, "admin", os.Getenv("MONGO_DB_PASSWD"))
+	st, err := new(opts)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
