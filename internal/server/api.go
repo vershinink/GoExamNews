@@ -32,9 +32,9 @@ type Response struct {
 // Pagination - структура пагинации. Включает в себя общее число страниц,
 // текущую страницу и число постов на странице.
 type Pagination struct {
-	Pages       int `json:"pages"`
-	Currect     int `json:"current"`
-	CountOnPage int `json:"countOnPage"`
+	Pages   int `json:"pages"`
+	Currect int `json:"current"`
+	OnPage  int `json:"onPage"`
 }
 
 const countOnPage int = 15
@@ -143,10 +143,17 @@ func Posts(st storage.DB) http.HandlerFunc {
 
 		// Высчитываем и формируем объект пагинации.
 		pgCount := int(num) / countOnPage
+		if int(num)%countOnPage != 0 {
+			pgCount++
+		}
 		if page > int(pgCount) {
 			page = 1
 		}
-		pg := Pagination{Pages: pgCount, Currect: page, CountOnPage: countOnPage}
+		onPage := int(num) - (page-1)*countOnPage
+		if onPage > 15 {
+			onPage = 15
+		}
+		pg := Pagination{Pages: pgCount, Currect: page, OnPage: onPage}
 
 		opt.Count = countOnPage
 		opt.Offset = countOnPage * (page - 1)
@@ -163,6 +170,7 @@ func Posts(st storage.DB) http.HandlerFunc {
 		resp := Response{Pagination: pg, Posts: posts}
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		enc := json.NewEncoder(w)
+		enc.SetIndent("", "\t")
 		err = enc.Encode(resp)
 		if err != nil {
 			log.Error("failed to encode posts", logger.Err(err))
@@ -204,7 +212,9 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		log.Debug("post by ID received successfully", slog.String("id", id))
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		err = json.NewEncoder(w).Encode(post)
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "\t")
+		err = enc.Encode(post)
 		if err != nil {
 			log.Error("failed to encode post", logger.Err(err))
 			http.Error(w, "failed to encode post", http.StatusInternalServerError)
