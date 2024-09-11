@@ -14,7 +14,7 @@ import (
 func main() {
 
 	// Инициализируем конфиг файл и логгер.
-	logger.MustLoad()
+	logger.SetupLogger()
 	cfg := config.MustLoad()
 	slog.Debug("config file and logger initialized")
 
@@ -37,7 +37,7 @@ func main() {
 	srv := server.New(cfg)
 	srv.API(st)
 	srv.Middleware()
-	srv.Start(st)
+	srv.Start()
 	slog.Info("Server started")
 
 	// Блокируем выполнение основной горутины и ожидаем сигнала прерывания.

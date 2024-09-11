@@ -7,10 +7,10 @@ import (
 	"os"
 )
 
-// MustLoad инициализирует логгер из пакета slog с выводом в формате
+// SetupLogger инициализирует логгер из пакета slog с выводом в формате
 // JSON и устанавливает его логгером по умолчанию, чтобы не передавать
 // этот кастомный логгер другим объектам.
-func MustLoad() {
+func SetupLogger() {
 	log := slog.New(
 		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
 	)

@@ -5,6 +5,7 @@ go 1.22.1
 require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/grokify/html-strip-tags-go v0.1.0
+	github.com/sqids/sqids-go v0.4.1
 	github.com/stretchr/testify v1.8.4
 	go.mongodb.org/mongo-driver v1.16.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -20,7 +21,6 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/sqids/sqids-go v0.4.1 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect

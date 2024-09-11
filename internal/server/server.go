@@ -35,7 +35,7 @@ func New(cfg *config.Config) *Server {
 }
 
 // Start запускает HTTP сервер в отдельной горутине.
-func (s *Server) Start(st storage.DB) {
+func (s *Server) Start() {
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
