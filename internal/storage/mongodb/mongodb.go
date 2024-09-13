@@ -19,7 +19,7 @@ import (
 // а не константы, так как в тестах им присваиваются другие
 // значения.
 var (
-	dbName  string = "goNews"
+	dbName  string = "goExam"
 	colName string = "posts"
 )
 
@@ -201,6 +201,7 @@ func (s *Storage) Count(ctx context.Context, op ...*storage.Options) (int64, err
 	return res, nil
 }
 
+// PostById возвращает пост по переданному ID.
 func (s *Storage) PostById(ctx context.Context, id string) (storage.Post, error) {
 	const operation = "storage.mongodb.PostById"
 	var post storage.Post
@@ -217,6 +218,9 @@ func (s *Storage) PostById(ctx context.Context, id string) (storage.Post, error)
 	collection := s.db.Database(dbName).Collection(colName)
 	filter := bson.D{{Key: "_id", Value: obj}}
 	res := collection.FindOne(ctx, filter)
+	if res.Err() == mongo.ErrNoDocuments {
+		return post, fmt.Errorf("%s: %w", operation, storage.ErrNotFound)
+	}
 	if res.Err() != nil {
 		return post, fmt.Errorf("%s: %w", operation, res.Err())
 	}

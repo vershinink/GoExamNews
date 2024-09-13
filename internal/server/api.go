@@ -7,6 +7,7 @@ import (
 	"GoNews/internal/storage"
 	"GoNews/webapp"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -205,8 +206,13 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		ctx := r.Context()
 		post, err := st.PostById(ctx, id)
 		if err != nil {
-			log.Error("failed to receive post by id", slog.String("id", id))
-			http.Error(w, "post not found", http.StatusBadRequest)
+			if errors.Is(err, storage.ErrNotFound) {
+				log.Error("post by id not found", slog.String("id", id), logger.Err(err))
+				http.Error(w, "post not found", http.StatusNotFound)
+				return
+			}
+			log.Error("failed to receive post by id", slog.String("id", id), logger.Err(err))
+			http.Error(w, "failed to receive post", http.StatusBadRequest)
 			return
 		}
 		log.Debug("post by ID received successfully", slog.String("id", id))

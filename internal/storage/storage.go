@@ -10,9 +10,9 @@ import (
 
 // Ошибки при работе с БД.
 var (
-	ErrEmptyDB     = errors.New("database is empty")
-	ErrZeroRequest = errors.New("requested 0 posts")
-	ErrEmptyId     = errors.New("empty id")
+	ErrEmptyDB  = errors.New("database is empty")
+	ErrNotFound = errors.New("post not found")
+	ErrEmptyId  = errors.New("empty id")
 )
 
 // Post - структура поста из RSS ленты для работы с БД.
