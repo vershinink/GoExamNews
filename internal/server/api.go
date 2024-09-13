@@ -136,8 +136,8 @@ func Posts(st storage.DB) http.HandlerFunc {
 			return
 		}
 		if num == 0 {
-			log.Error("posts not found", logger.Err(err))
-			http.Error(w, "posts not found", http.StatusInternalServerError)
+			log.Error("posts not found")
+			http.Error(w, "posts not found", http.StatusNotFound)
 			return
 		}
 		log.Debug("posts count successfully", slog.Int64("num", num))
@@ -206,13 +206,16 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		ctx := r.Context()
 		post, err := st.PostById(ctx, id)
 		if err != nil {
+			log.Error("failed to receive post by id", slog.String("id", id), logger.Err(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				log.Error("post by id not found", slog.String("id", id), logger.Err(err))
 				http.Error(w, "post not found", http.StatusNotFound)
 				return
 			}
-			log.Error("failed to receive post by id", slog.String("id", id), logger.Err(err))
-			http.Error(w, "failed to receive post", http.StatusBadRequest)
+			if errors.Is(err, storage.ErrIncorrectId) {
+				http.Error(w, "incorrect post id", http.StatusBadRequest)
+				return
+			}
+			http.Error(w, "failed to receive post", http.StatusInternalServerError)
 			return
 		}
 		log.Debug("post by ID received successfully", slog.String("id", id))

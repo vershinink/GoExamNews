@@ -175,7 +175,7 @@ func (s *Storage) Posts(ctx context.Context, op ...*storage.Options) ([]storage.
 	}
 
 	if len(posts) == 0 {
-		return nil, fmt.Errorf("%s: %w", operation, storage.ErrEmptyDB)
+		return nil, fmt.Errorf("%s: %w", operation, storage.ErrNotFound)
 	}
 
 	return posts, nil
@@ -207,12 +207,12 @@ func (s *Storage) PostById(ctx context.Context, id string) (storage.Post, error)
 	var post storage.Post
 
 	if id == "" {
-		return post, fmt.Errorf("%s: %w", operation, storage.ErrEmptyId)
+		return post, fmt.Errorf("%s: %w", operation, storage.ErrIncorrectId)
 	}
 
 	obj, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return post, fmt.Errorf("%s: %w", operation, err)
+		return post, fmt.Errorf("%s: %w", operation, storage.ErrIncorrectId)
 	}
 
 	collection := s.db.Database(dbName).Collection(colName)
