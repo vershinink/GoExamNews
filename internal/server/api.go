@@ -63,6 +63,9 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 
 		log.Info("request to receive last posts")
 
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+
 		n, err := strconv.Atoi(r.PathValue("n"))
 		if err != nil {
 			log.Error("incorrect posts number")
@@ -87,7 +90,6 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 
 		resp := respConv(posts)
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "\t")
 		err = enc.Encode(resp)
@@ -96,9 +98,8 @@ func PostsWebApp(st storage.DB) http.HandlerFunc {
 			http.Error(w, "failed to encode posts", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+
 		log.Info("request served successfuly")
-		log = nil
 	}
 }
 
@@ -115,6 +116,9 @@ func Posts(st storage.DB) http.HandlerFunc {
 		)
 
 		log.Info("request to receive posts")
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
 
 		page, err := strconv.Atoi(r.URL.Query().Get("page"))
 		if err != nil || page < 1 {
@@ -169,7 +173,6 @@ func Posts(st storage.DB) http.HandlerFunc {
 		log.Debug("posts received successfully", slog.Int("num", len(posts)))
 
 		resp := Response{Pagination: pg, Posts: posts}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "\t")
 		err = enc.Encode(resp)
@@ -178,9 +181,8 @@ func Posts(st storage.DB) http.HandlerFunc {
 			http.Error(w, "failed to encode posts", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+
 		log.Info("request served successfuly")
-		log = nil
 	}
 }
 
@@ -195,6 +197,9 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		)
 
 		log.Info("request to receive post by ID")
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
 
 		id := r.PathValue("id")
 		if id == "" {
@@ -220,7 +225,6 @@ func PostByID(st storage.DB) http.HandlerFunc {
 		}
 		log.Debug("post by ID received successfully", slog.String("id", id))
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "\t")
 		err = enc.Encode(post)
@@ -229,9 +233,8 @@ func PostByID(st storage.DB) http.HandlerFunc {
 			http.Error(w, "failed to encode post", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+
 		log.Info("request served successfuly", slog.String("id", id))
-		log = nil
 	}
 }
 

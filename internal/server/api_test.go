@@ -372,7 +372,7 @@ func TestPostByID(t *testing.T) {
 			uri:       "/news/id/1234",
 			want:      "",
 			respError: "post not found",
-			mockError: errors.New("DB error"),
+			mockError: storage.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
